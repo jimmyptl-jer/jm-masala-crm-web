@@ -11,7 +11,8 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
 import { Button, Card, Input } from '@/components/ui';
-import { AUTH_BYPASS } from '@/lib/config';
+import { ApiError } from '@/lib/api';
+import { AUTH_BYPASS, SIMPLE_AUTH } from '@/lib/config';
 import { supabase } from '@/lib/supabase';
 import { t } from '@/strings';
 
@@ -53,7 +54,7 @@ export function AuthShell({ title, children }: { title: string; children: ReactN
  */
 export default function Login() {
   // Current Supabase session (null when signed out; always null in bypass mode).
-  const { session } = useAuth();
+  const { signedIn, signInSimple } = useAuth();
   const navigate = useNavigate();
   const loc = useLocation();
   // RequireAuth redirects here with the page the user wanted in navigation state (`from`).
@@ -81,7 +82,7 @@ export default function Login() {
 
   // Already signed in, or login is switched off: nothing to do here, redirect. (After all hooks above, so
   // hook order stays stable.)
-  if (session || AUTH_BYPASS) return <Navigate to={AUTH_BYPASS ? '/' : from} replace />;
+  if (signedIn || AUTH_BYPASS) return <Navigate to={AUTH_BYPASS ? '/' : from} replace />;
 
   /**
    * Sign-in form submit. Ignored while busy. Checks that email and password are filled (messages under the
@@ -101,14 +102,19 @@ export default function Login() {
     if (fe.email || fe.password) return;
     setBusy(true);
     try {
+      if (SIMPLE_AUTH) {
+        await signInSimple(email.trim(), password);
+        navigate(from, { replace: true });
+        return;
+      }
       const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (err) {
         setError(err.status === 400 || err.status === 401 || err.code === 'invalid_credentials' ? s.invalid : s.signInFailed);
         return;
       }
       navigate(from, { replace: true });
-    } catch {
-      setError(s.signInFailed);
+    } catch (e) {
+      setError(e instanceof ApiError && e.status === 401 ? s.invalid : e instanceof ApiError && e.status === 429 ? e.message : s.signInFailed);
     } finally {
       setBusy(false);
     }
@@ -171,7 +177,7 @@ export default function Login() {
         {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-base text-red-900">{error}</p>}
         <Button type="submit" className="w-full" loading={busy}>{busy ? s.submitting : s.submit}</Button>
       </form>
-      <Button variant="ghost" className="mt-2 w-full" onClick={() => { setMode('forgot'); setError(null); setFieldErrors({}); }}>{s.forgot}</Button>
+      {!SIMPLE_AUTH && <Button variant="ghost" className="mt-2 w-full" onClick={() => { setMode('forgot'); setError(null); setFieldErrors({}); }}>{s.forgot}</Button>}
     </AuthShell>
   );
 }

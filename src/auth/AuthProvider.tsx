@@ -13,7 +13,7 @@ import type { Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError, api } from '@/lib/api';
-import { AUTH_BYPASS } from '@/lib/config';
+import { AUTH_BYPASS, AUTH_LOST_EVENT, SIMPLE_AUTH, TOKEN_KEY } from '@/lib/config';
 import { supabase } from '@/lib/supabase';
 import type { Me } from '@/lib/types';
 import { Spinner } from '@/components/ui';
@@ -43,6 +43,10 @@ interface AuthState {
   isAdmin: boolean;
   /** Set when the account signed in but has no profile row yet. */
   profileError: string | null;
+  /** True when someone is signed in (Supabase session, or a stored token in SIMPLE_AUTH mode). */
+  signedIn: boolean;
+  /** SIMPLE_AUTH only: sign in with e-mail and password; throws ApiError (401 = wrong details). */
+  signInSimple: (email: string, password: string) => Promise<void>;
   /**
    * Ends the Supabase session. The SIGNED_OUT listener in AuthProvider then clears me and the whole query
    * cache.
@@ -90,6 +94,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
+  // SIMPLE_AUTH: is a login token stored? (the API checks it; a rejected token fires AUTH_LOST_EVENT)
+  const [hasToken, setHasToken] = useState(() => { try { return SIMPLE_AUTH && !!localStorage.getItem(TOKEN_KEY); } catch { return false; } });
   const qc = useQueryClient();
 
   /**
@@ -121,6 +127,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // unsubscribes.
   useEffect(() => {
     let alive = true;
+    if (SIMPLE_AUTH && !AUTH_BYPASS) {
+      const lost = () => { setHasToken(false); setMe(null); qc.clear(); };
+      window.addEventListener(AUTH_LOST_EVENT, lost);
+      (hasToken ? loadMe() : Promise.resolve()).finally(() => { if (alive) setLoading(false); });
+      return () => { alive = false; window.removeEventListener(AUTH_LOST_EVENT, lost); };
+    }
     if (AUTH_BYPASS) {
       // no Supabase session: the API identifies everyone as the built-in admin
       loadMe().finally(() => { if (alive) setLoading(false); });
@@ -139,15 +151,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'SIGNED_IN' && s) setTimeout(() => void loadMe(), 0);
     });
     return () => { alive = false; sub.subscription.unsubscribe(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hasToken is only the start-up value
   }, [loadMe, qc]);
 
   // Memoised so consumers re-render only when something they read actually changed.
   // signOut simply asks Supabase to end the session; the SIGNED_OUT listener above does the clean-up.
   const value = useMemo<AuthState>(() => ({
     session, me, loading, profileError, isAdmin: me?.role === 'admin',
-    signOut: async () => { await supabase.auth.signOut(); },
+    signedIn: SIMPLE_AUTH ? hasToken : !!session,
+    signInSimple: async (email: string, password: string) => {
+      const r = await api.post<{ token: string }>('/auth/login', { email, password });
+      try { localStorage.setItem(TOKEN_KEY, r.token); } catch { /* storage unavailable */ }
+      setHasToken(true);
+      await loadMe();
+    },
+    signOut: async () => {
+      if (SIMPLE_AUTH) {
+        try { localStorage.removeItem(TOKEN_KEY); } catch { /* storage unavailable */ }
+        setHasToken(false); setMe(null); qc.clear();
+        return;
+      }
+      await supabase.auth.signOut();
+    },
     refreshMe: loadMe,
-  }), [session, me, loading, profileError, loadMe]);
+  }), [session, me, loading, profileError, hasToken, loadMe, qc]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -163,10 +190,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
  *   fails.
  */
 export function RequireAuth() {
-  const { session, me, loading, profileError, signOut } = useAuth();
+  const { signedIn, me, loading, profileError, signOut } = useAuth();
   const loc = useLocation();
   if (loading) return <Spinner />;
-  if (!session && !AUTH_BYPASS) return <Navigate to="/login" replace state={{ from: loc.pathname + loc.search }} />;
+  if (!signedIn && !AUTH_BYPASS) return <Navigate to="/login" replace state={{ from: loc.pathname + loc.search }} />;
   if (!me) {
     return (
       <div className="mx-auto max-w-md p-6 text-center">

@@ -18,6 +18,6 @@ import { createClient } from '@supabase/supabase-js';
  * password-reset email link (this is what raises the PASSWORD_RECOVERY event).
  * The client is created even in AUTH_BYPASS mode, but nothing signs in with it then.
  */
-export const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createClient(import.meta.env.VITE_SUPABASE_URL ?? 'http://localhost:54321', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? 'unused', {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });

@@ -11,7 +11,7 @@
  * Used by lib/hooks.ts, auth/AuthProvider.tsx, pages/*, components/*.
  */
 
-import { AUTH_BYPASS } from './config';
+import { AUTH_BYPASS, SIMPLE_AUTH, TOKEN_KEY, AUTH_LOST_EVENT } from './config';
 import { supabase } from './supabase';
 
 // API base URL without a trailing slash; the same-origin '/api/v1' is used unless VITE_API_URL is set.
@@ -39,6 +39,7 @@ export class ApiError extends Error {
  */
 async function token(): Promise<string | null> {
   if (AUTH_BYPASS) return null; // the API ignores tokens in bypass mode
+  if (SIMPLE_AUTH) { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } }
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
 }
@@ -75,7 +76,10 @@ async function request<T>(method: string, path: string, body?: unknown, isForm =
   if (!res.ok) {
     if (res.status === 401 && !AUTH_BYPASS) {
       // token rejected: drop the session so the app shows the login screen
-      await supabase.auth.signOut();
+      if (SIMPLE_AUTH) {
+        try { localStorage.removeItem(TOKEN_KEY); } catch { /* storage unavailable */ }
+        window.dispatchEvent(new Event(AUTH_LOST_EVENT));
+      } else await supabase.auth.signOut();
     }
     const e = data?.error;
     throw new ApiError(res.status, e?.code ?? 'error', e?.message ?? `Request failed (${res.status})`, e?.fields);

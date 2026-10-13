@@ -14,3 +14,14 @@
  * with 401.
  */
 export const AUTH_BYPASS = import.meta.env.VITE_AUTH_BYPASS === 'true';
+
+/**
+ * True when VITE_SIMPLE_AUTH is 'true': sign in with e-mail and password against the API's fixed users
+ * (POST /auth/login) instead of Supabase Auth. The token is kept in localStorage (key below) for 30 days.
+ * The API must run with SIMPLE_AUTH=true as well.
+ */
+export const SIMPLE_AUTH = import.meta.env.VITE_SIMPLE_AUTH === 'true';
+/** localStorage key holding the simple-login token. */
+export const TOKEN_KEY = 'jm-login-token';
+/** Window event fired when the API rejects the stored token, so the app returns to the sign-in screen. */
+export const AUTH_LOST_EVENT = 'jm-auth-lost';

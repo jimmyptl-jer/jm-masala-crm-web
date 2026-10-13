@@ -18,6 +18,7 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_PUBLISHABLE_KEY: string;
   readonly VITE_API_URL: string;
   readonly VITE_AUTH_BYPASS?: string;
+  readonly VITE_SIMPLE_AUTH?: string;
 }
 // Tells TypeScript that import.meta.env has the shape above.
 interface ImportMeta { readonly env: ImportMetaEnv }
