@@ -1,0 +1,127 @@
+// Strings for the quote form screen (SRS section 8). Every visible word lives here.
+export const quoteForm = {
+  newTitle: 'New quote',
+  editTitle: 'Edit quote',
+  revisingSubtitle: (number: string) => `Working on ${number}`,
+  loadFailed: 'Could not load this quote. Check your connection and try again.',
+
+  // sections
+  buyerSection: 'Buyer',
+  termsSection: 'Terms',
+  productsSection: 'Products',
+  chargesSection: 'Charges',
+  notesSection: 'Notes',
+
+  // buyer
+  buyer: 'Buyer',
+  buyerPlaceholder: 'Choose a buyer',
+  buyerSearch: 'Search buyers…',
+  addBuyer: 'Add new buyer',
+  addBuyerTitle: 'New buyer',
+  noBuyers: 'No buyers found',
+  buyerRequired: 'Choose a buyer',
+  buyerLockedNote: 'The buyer and the Export/Domestic type cannot be changed once a quote has been issued. To quote a different buyer, make a copy of this quote from its page.',
+  typeLabel: 'Quote type',
+
+  // terms
+  editTerms: 'Edit',
+  doneTerms: 'Done',
+  termsSummaryExport: (currency: string, incoterm: string, port: string) =>
+    ['Export', currency, incoterm, port].filter(Boolean).join(' · '),
+  termsSummaryDomestic: 'Domestic · INR',
+  currency: 'Currency',
+  incoterm: 'Incoterm',
+  incotermChoose: 'Choose',
+  incotermNames: {
+    FOB: 'FOB – Free on board',
+    CIF: 'CIF – Cost, insurance and freight',
+    CFR: 'CFR – Cost and freight',
+    EXW: 'EXW – Ex works',
+  } as Record<string, string>,
+  portLoading: 'Port of loading',
+  placeOfPickup: 'Place of pickup',
+  portDischarge: 'Port of discharge',
+  loadingPorts: ['Mundra', 'Nhava Sheva (JNPT)', 'Kandla', 'Mumbai', 'Pipavav', 'Chennai', 'Tuticorin', 'Cochin'],
+  paymentTerms: 'Payment terms',
+  paymentChoose: 'Choose payment terms',
+  paymentOther: 'Other…',
+  paymentOtherLabel: 'Type payment terms',
+  paymentOptions: [
+    '100% advance',
+    '30% advance, balance against BL copy',
+    '50% advance, balance against BL copy',
+    'LC at sight',
+    'LC 30 days',
+    'Net 30 days',
+    'Net 60 days',
+  ],
+  deliveryTime: 'Delivery time',
+  deliveryHint: 'For example: 15 days from order',
+  validityDays: 'Quote valid for (days)',
+
+  // products
+  productN: (n: number) => `Product ${n}`,
+  product: 'Product',
+  productPlaceholder: 'Choose a product',
+  productSearch: 'Search products…',
+  noProducts: 'No products found',
+  productRequired: 'Choose a product',
+  packing: 'Packing',
+  packingChoose: 'Choose packing',
+  packingOther: 'Other…',
+  packingOtherLabel: 'Type packing',
+  quantity: (unit: string) => (unit ? `Quantity (${unit})` : 'Quantity'),
+  quantityRequired: 'Enter a quantity',
+  rate: (currency: string, unit: string) => (unit ? `Rate (${currency} per ${unit})` : `Rate (${currency})`),
+  rateRequired: 'Enter a rate',
+  lineAmount: 'Amount',
+  lineGst: (rate: string) => `GST ${rate}%`,
+  addProduct: 'Add product',
+  removeProduct: (n: number) => `Remove product ${n}`,
+  atLeastOneProduct: 'Add at least one product',
+  hintsHeading: 'Tap a price to use it',
+  hintLastBuyer: 'Last to this buyer',
+  hintLastAnyone: 'Last to anyone',
+  hintReference: 'Reference',
+
+  // cost / margin (internal)
+  showCost: 'Show cost',
+  hideCost: 'Hide cost',
+  costNotPrinted: 'Internal only. Not printed on the quote.',
+  costRate: (currency: string, unit: string) => `Your cost (${currency} per ${unit})`,
+  margin: 'Margin',
+  totalMargin: 'Total margin',
+  marginIncomplete: 'Some products have no cost entered, so this is only part of the margin.',
+
+  // charges
+  freight: (currency: string) => `Freight (${currency})`,
+  insurance: (currency: string) => `Insurance (${currency})`,
+  discount: (currency: string) => `Discount (${currency})`,
+  chargesOnly: 'Freight and insurance apply only to CIF and CFR quotes.',
+
+  // notes
+  notes: 'Special notes',
+  notesHint: 'Printed on the quote under “Special notes”.',
+
+  // totals bar
+  subtotal: 'Subtotal',
+  gst: 'GST',
+  roundOff: 'Round off',
+  grandTotal: 'Total',
+  calculating: 'Calculating…',
+  calcFailed: 'Could not calculate the total.',
+  addLinesForTotal: 'Choose a buyer and fill one product to see the total.',
+  taxMode: { none: 'No GST', intra: 'CGST + SGST', inter: 'IGST' } as Record<string, string>,
+  saveDraft: 'Save draft',
+  savingDraft: 'Saving…',
+  issue: 'Issue & generate PDF',
+  issuing: 'Issuing…',
+
+  // messages
+  draftSaved: 'Draft saved',
+  issued: 'Quote issued',
+  issuedPdfFailed: 'The quote was issued, but the PDF could not be made. Open the quote and tap the PDF button to try again.',
+  issueAfterSaveFailed: 'The draft was saved, but the quote was not issued.',
+  fixHighlighted: 'Please fix the highlighted fields.',
+  draftSavedIssueFailed: 'Draft saved. Fix the highlighted fields, then issue again.',
+};

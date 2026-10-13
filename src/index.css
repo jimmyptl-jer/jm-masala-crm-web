@@ -1,0 +1,55 @@
+/*
+ * Global stylesheet, imported once by src/main.tsx.
+ * Loads the two brand fonts from Google Fonts (Cormorant Garamond for headings, Inter for text), pulls in
+ * Tailwind's layers and defines the few custom classes the app needs (.card, .tap, .safe-bottom,
+ * .has-tabbar). Everything else is styled with Tailwind utility classes directly in the components.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+/*
+ * Tailwind's three layers: base (browser reset + element defaults), components (our .card/.tap classes) and
+ * utilities (the bg-*, px-*, text-* classes used in the TSX files).
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global element defaults. */
+@layer base {
+  /* Stops mobile browsers from enlarging text after rotation. */
+  html { -webkit-text-size-adjust: 100%; }
+  /*
+   * Page background (cream), text colour (ink) and font come from tailwind.config.js;
+   * overscroll-behavior-y: none stops the rubber-band bounce / pull-to-refresh effect at the top and bottom
+   * of the page.
+   */
+  body { @apply bg-cream-100 text-ink font-sans antialiased; overscroll-behavior-y: none; }
+  /* iOS zooms into inputs under 16px; keep them readable and tap-friendly */
+  input, select, textarea { font-size: 16px; }
+  /* touch-action: manipulation removes the 300 ms tap delay and double-tap zoom on buttons. */
+  button { touch-action: manipulation; }
+  /* Visible gold focus outline for keyboard users only. */
+  :focus-visible { @apply outline-2 outline-offset-2 outline-gold-500; }
+}
+
+/* Reusable component classes used across the screens. */
+@layer components {
+  /* Standard white panel (used by the Card component and list rows). */
+  .card { @apply rounded-xl border border-cream-200 bg-white shadow-sm; }
+  /* Minimum 44 px touch target (min-h-tap / min-w-tap in tailwind.config.js). */
+  .tap { @apply min-h-tap min-w-tap; }
+}
+
+/* leave room for the bottom tab bar and the iPhone home indicator */
+/*
+ * Bottom padding that respects the iPhone home indicator (env(safe-area-inset-bottom)); used by the phone
+ * tab bar and modal footers.
+ */
+.safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 0.25rem); }
+/*
+ * Applied to <main> in Layout: padding at the bottom so the fixed phone tab bar (about 5rem) never covers
+ * content.
+ */
+.has-tabbar { padding-bottom: calc(5rem + env(safe-area-inset-bottom)); }
+/* From md width up the tab bar is hidden, so only normal padding is needed. */
+@media (min-width: 768px) { .has-tabbar { padding-bottom: 2rem; } }
