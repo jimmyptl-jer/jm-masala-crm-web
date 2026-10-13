@@ -8,22 +8,15 @@
  */
 
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
-import { RecoveryRedirect, RequireAdmin, RequireAuth } from '@/auth/AuthProvider';
+import { RecoveryRedirect, RequireAuth } from '@/auth/AuthProvider';
 import { Layout } from '@/components/Layout';
 import BuyerDetail from '@/pages/BuyerDetail';
 import Buyers from '@/pages/Buyers';
-import CampaignDetail from '@/pages/CampaignDetail';
-import CampaignNew from '@/pages/CampaignNew';
-import Intelligence from '@/pages/Intelligence';
-import Marketing from '@/pages/Marketing';
 import Login from '@/pages/Login';
-import Products from '@/pages/Products';
 import QuoteDetail from '@/pages/QuoteDetail';
 import QuoteForm from '@/pages/QuoteForm';
 import Quotes from '@/pages/Quotes';
 import ResetPassword from '@/pages/ResetPassword';
-import Settings from '@/pages/Settings';
-import Today from '@/pages/Today';
 
 /**
  * Top-level route element: renders <RecoveryRedirect /> (watches for the password-recovery event and sends
@@ -40,9 +33,10 @@ const Root = () => (<><RecoveryRedirect /><Outlet /></>);
  * - Layout: sidebar (desktop) / tab bar (phone) around the screen.
  * - /, /quotes, /quotes/new, /quotes/:id/edit, /quotes/:id: Today, Quotes, QuoteForm (new), QuoteForm (edit
  *   a draft), QuoteDetail.
- * - /buyers, /buyers/:id, /marketing, /products: Buyers, BuyerDetail, Marketing, Products.
- * - RequireAdmin: /settings is admin-only (FR-04); non-admins are redirected to /.
- * - Any unknown URL redirects to / (replace, so Back does not loop).
+ * - /buyers, /buyers/:id: Buyers, BuyerDetail.
+ * - Only Quotes and Buyers are routed on main for now. Today, Products, Settings, Marketing and Trade
+ *   intelligence are on the feature-0002 branch. "/" and any unknown URL redirect to /quotes (replace, so Back
+ *   does not loop).
  */
 export const router = createBrowserRouter([
   {
@@ -56,21 +50,14 @@ export const router = createBrowserRouter([
           {
             element: <Layout />,
             children: [
-              { path: '/', element: <Today /> },
+              { path: '/', element: <Navigate to="/quotes" replace /> },
               { path: '/quotes', element: <Quotes /> },
               { path: '/quotes/new', element: <QuoteForm /> },
               { path: '/quotes/:id/edit', element: <QuoteForm /> },
               { path: '/quotes/:id', element: <QuoteDetail /> },
               { path: '/buyers', element: <Buyers /> },
-              { path: '/marketing', element: <Marketing /> },
-              { path: '/intelligence', element: <Intelligence /> },
-              { path: '/marketing/campaigns/new', element: <CampaignNew /> },
-              { path: '/marketing/campaigns/:id/edit', element: <CampaignNew /> },
-              { path: '/marketing/campaigns/:id', element: <CampaignDetail /> },
               { path: '/buyers/:id', element: <BuyerDetail /> },
-              { path: '/products', element: <Products /> },
-              { element: <RequireAdmin />, children: [{ path: '/settings', element: <Settings /> }] },
-              { path: '*', element: <Navigate to="/" replace /> },
+              { path: '*', element: <Navigate to="/quotes" replace /> },
             ],
           },
         ],

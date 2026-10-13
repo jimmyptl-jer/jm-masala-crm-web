@@ -7,7 +7,7 @@
  */
 
 import clsx from 'clsx';
-import { Globe, LayoutDashboard, FileText, LogOut, Megaphone, Plus, Settings as Cog, Users, Package } from 'lucide-react';
+import { FileText, LogOut, Users } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
 import { AUTH_BYPASS } from '@/lib/config';
@@ -24,8 +24,8 @@ const link = ({ isActive }: { isActive: boolean }) =>
 /**
  * Shell around every signed-in screen: it is the route element in router.tsx and draws the current page
  * through <Outlet />.
- * Desktop (md and up): left sidebar with logo, links Today, Quotes, New quote, Buyers, Marketing, Products and (admins
- * only, FR-04) Settings, then the user's name and a Sign out button.
+ * Desktop (md and up): left sidebar with logo and only two links for now, Quotes and Buyers (the other screens
+ * live on the feature-0002 branch and are added back gradually), then the user's name and a Sign out button.
  * Phone: a sticky green top bar (logo; Settings cog for admins; sign-out icon) and a fixed bottom tab bar
  * with Today, Quotes, a raised gold "+" for New quote, Buyers, Marketing, Products. Settings lives in the top bar
  * because the tab bar has no room for it (SRS section 8).
@@ -35,7 +35,7 @@ const link = ({ isActive }: { isActive: boolean }) =>
  * API calls or query keys here.
  */
 export function Layout() {
-  const { me, isAdmin, signOut } = useAuth();
+  const { me, signOut } = useAuth();
 
   return (
     <div className="min-h-dvh md:flex">
@@ -46,14 +46,8 @@ export function Layout() {
           <div className="font-serif text-xl font-semibold leading-tight text-white">JM Masala<div className="font-sans text-xs font-normal text-gold-300">Quotations</div></div>
         </div>
         <nav className="flex flex-1 flex-col gap-1" aria-label="Main">
-          <NavLink to="/" end className={link}><LayoutDashboard className="h-5 w-5" />{t.nav.today}</NavLink>
-          <NavLink to="/quotes" end className={link}><FileText className="h-5 w-5" />{t.nav.quotes}</NavLink>
-          <NavLink to="/quotes/new" className={link}><Plus className="h-5 w-5" />{t.nav.newQuote}</NavLink>
+          <NavLink to="/quotes" className={link}><FileText className="h-5 w-5" />{t.nav.quotes}</NavLink>
           <NavLink to="/buyers" className={link}><Users className="h-5 w-5" />{t.nav.buyers}</NavLink>
-          <NavLink to="/marketing" className={link}><Megaphone className="h-5 w-5" />{t.nav.marketing}</NavLink>
-          <NavLink to="/intelligence" className={link}><Globe className="h-5 w-5" />{t.ti.navLabel}</NavLink>
-          <NavLink to="/products" className={link}><Package className="h-5 w-5" />{t.nav.products}</NavLink>
-          {isAdmin && <NavLink to="/settings" className={link}><Cog className="h-5 w-5" />{t.nav.settings}</NavLink>}
         </nav>
         {/* signed-in person and Sign out: only when login is on (nobody is "signed in" while login is switched off) */}
         {!AUTH_BYPASS && (
@@ -75,8 +69,6 @@ export function Layout() {
             <span className="font-serif text-lg font-semibold">JM Masala</span>
           </div>
           <div className="flex items-center">
-            <NavLink to="/intelligence" aria-label={t.ti.title} className="tap grid place-items-center rounded-lg hover:bg-forest-800"><Globe className="h-5 w-5" /></NavLink>
-            {isAdmin && <NavLink to="/settings" aria-label={t.nav.settings} className="tap grid place-items-center rounded-lg hover:bg-forest-800"><Cog className="h-5 w-5" /></NavLink>}
             {!AUTH_BYPASS && <button onClick={() => void signOut()} aria-label={t.nav.signOut} className="tap grid place-items-center rounded-lg hover:bg-forest-800"><LogOut className="h-5 w-5" /></button>}
           </div>
         </header>
@@ -90,15 +82,9 @@ export function Layout() {
         {/*
         Phone bottom tab bar (hidden from md up): equal columns around the raised gold New quote button.
         */}
-        <nav aria-label="Main" className="safe-bottom fixed inset-x-0 bottom-0 z-40 grid grid-cols-[1fr_1fr_auto_1fr_1fr_1fr] items-end border-t border-cream-200 bg-white md:hidden">
-          <Tab to="/" end icon={<LayoutDashboard className="h-5 w-5" />} label={t.nav.today} />
-          <Tab to="/quotes" end icon={<FileText className="h-5 w-5" />} label={t.nav.quotes} />
-          <NavLink to="/quotes/new" aria-label={t.nav.newQuote} className="-mt-5 flex flex-col items-center pb-1">
-            <span className="grid h-14 w-14 place-items-center rounded-full bg-gold-500 text-forest-950 shadow-lg ring-4 ring-white"><Plus className="h-7 w-7" /></span>
-          </NavLink>
+        <nav aria-label="Main" className="safe-bottom fixed inset-x-0 bottom-0 z-40 grid grid-cols-2 items-end border-t border-cream-200 bg-white md:hidden">
+          <Tab to="/quotes" icon={<FileText className="h-5 w-5" />} label={t.nav.quotes} />
           <Tab to="/buyers" icon={<Users className="h-5 w-5" />} label={t.nav.buyers} />
-          <Tab to="/marketing" icon={<Megaphone className="h-5 w-5" />} label={t.nav.marketing} />
-          <Tab to="/products" icon={<Package className="h-5 w-5" />} label={t.nav.products} />
         </nav>
       </div>
     </div>
