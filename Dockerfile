@@ -1,7 +1,7 @@
-# Docker image for the web app: a multi-stage build that compiles the React/Vite site and serves it with
-# nginx (see nginx.conf).
-# Build with the public values as build args, e.g. docker build --build-arg VITE_SUPABASE_URL=...
-# --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=... --build-arg VITE_API_URL=https://api.example.com/api/v1 .
+# Image for the web service: a multi-stage build that compiles the React/Vite site and serves it with
+# nginx (see nginx.conf). Built and deployed on its own:
+#   docker build --build-arg VITE_API_URL=https://<api>/api/v1 --build-arg VITE_SIMPLE_AUTH=true -t jm-masala-web ./web
+# For a login through Supabase instead, also pass --build-arg VITE_SUPABASE_URL=... --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=...
 # These values are baked into the bundle at build time (changing them needs a rebuild) and are public by
 # nature; never pass the Supabase service-role key.
 
@@ -18,8 +18,11 @@ COPY . .
 # VITE_* values are baked into the bundle at build time. Only the PUBLISHABLE key belongs here.
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
+# Full address of the API including /api/v1, e.g. https://jm-masala-api.onrender.com/api/v1
 ARG VITE_API_URL
-# tsc type-check, then vite build -> /app/dist. The three ARG values above are visible to this step and Vite
+# true = the API's fixed-user login (pair with SIMPLE_AUTH=true on the API).
+ARG VITE_SIMPLE_AUTH
+# tsc type-check, then vite build -> /app/dist. The ARG values above are visible to this step and Vite
 # embeds them in the JavaScript. VITE_AUTH_BYPASS is not declared as an ARG here, so a Docker build always
 # has the login enabled (bypass stays off).
 RUN npm run build
@@ -32,3 +35,5 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 # Documentation only: the container listens on port 80 (publish it with -p or the host's port setting).
 EXPOSE 80
+# Healthy when nginx answers the home page.
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -q --spider http://127.0.0.1/ || exit 1
