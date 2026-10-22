@@ -1,21 +1,14 @@
 /**
- * HTTP client for the quotes API: every screen talks to the backend through `api` (get / post / put / patch /
+ * Client for the quotes API: every screen talks to the backend through `api` (get / post / put / patch /
  * del / upload / download), plus the helpers `qs` (query strings), `pdfUrl` (signed PDF link) and the error
  * class `ApiError`.
- * API: all routes under the base URL (VITE_API_URL, default '/api/v1', see the route list in api/src/routes).
- * Responses are JSON; this file adds no react-query keys (callers such as lib/hooks.ts own those).
- * Auth: each request carries `Authorization: Bearer <Supabase access token>`. When AUTH_BYPASS is true
- * (lib/config.ts, build-time VITE_AUTH_BYPASS='true') no token is sent and a 401 does not sign the user out,
- * because the API must be running with AUTH_BYPASS=true as well and ignores tokens.
- * Errors: a non-2xx answer becomes an ApiError built from the API's { error: { code, message, fields? } }.
+ * The real API is paused (see docs/ARCHITECTURE.md): `request` answers from the in-memory sample data in
+ * lib/mock instead of calling the network. To bring the API back, replace `request` with a fetch call to the API (the old version is on the git branch backup/api-full).
+ * Errors: a failed call throws an ApiError built from { error: { code, message, fields? } }.
  * Used by lib/hooks.ts, auth/AuthProvider.tsx, pages/*, components/*.
  */
 
-import { AUTH_BYPASS, SIMPLE_AUTH, TOKEN_KEY, AUTH_LOST_EVENT } from './config';
-import { supabase } from './supabase';
-
-// API base URL without a trailing slash; the same-origin '/api/v1' is used unless VITE_API_URL is set.
-const BASE = (import.meta.env.VITE_API_URL ?? '/api/v1').replace(/\/$/, '');
+import { mockRequest } from './mock';
 
 /**
  * The API's error envelope: { error: { code, message, fields? } }.
@@ -33,58 +26,13 @@ export class ApiError extends Error {
 }
 
 /**
- * Gets the bearer token for the current Supabase session.
- * @returns the access token, or null when AUTH_BYPASS is on or nobody is signed in (no header is sent then).
- * Side effects: none (Supabase refreshes the token itself when needed).
+ * The one place every JSON and form request goes through; `api.get` etc. are thin wrappers.
+ * @param method — HTTP method. @param path — path starting with '/', query string included (see qs()).
+ * @param body — object, or a FormData for uploads (the mock does not read files).
+ * @returns the answer typed as T. @throws ApiError, e.g. 501 'needs_api' for anything the mock does not cover.
  */
-async function token(): Promise<string | null> {
-  if (AUTH_BYPASS) return null; // the API ignores tokens in bypass mode
-  if (SIMPLE_AUTH) { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } }
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
-
-/**
- * The one place that calls fetch for JSON and form requests; `api.get` etc. are thin wrappers.
- * @param method — HTTP method.
- * @param path — path after the base URL, starting with '/', query string included (see qs()).
- * @param body — object sent as JSON, or a FormData when `isForm`; undefined sends no body.
- * @param isForm — true for multipart uploads: the body is sent as-is and no Content-Type is set, so the
- *   browser adds the multipart boundary itself.
- * @returns the parsed JSON body typed as T; undefined for 204 No Content; null when a 2xx answer is not JSON.
- * @throws ApiError for any non-2xx answer. On a 401 (and not in AUTH_BYPASS mode) the Supabase session is
- *   signed out first, so the app falls back to the login screen. Network failures throw fetch's TypeError.
- */
-async function request<T>(method: string, path: string, body?: unknown, isForm = false): Promise<T> {
-  // Token for this request (null in bypass mode or when signed out).
-  const t = await token();
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: {
-      ...(t ? { Authorization: `Bearer ${t}` } : {}),
-      ...(body !== undefined && !isForm ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
-  });
-
-  // 204 No Content (e.g. deleting a draft) has no body to parse.
-  if (res.status === 204) return undefined as T;
-  // Parse only JSON answers; a body that is not valid JSON becomes null instead of throwing.
-  const ct = res.headers.get('content-type') ?? '';
-  const data = ct.includes('application/json') ? await res.json().catch(() => null) : null;
-
-  if (!res.ok) {
-    if (res.status === 401 && !AUTH_BYPASS) {
-      // token rejected: drop the session so the app shows the login screen
-      if (SIMPLE_AUTH) {
-        try { localStorage.removeItem(TOKEN_KEY); } catch { /* storage unavailable */ }
-        window.dispatchEvent(new Event(AUTH_LOST_EVENT));
-      } else await supabase.auth.signOut();
-    }
-    const e = data?.error;
-    throw new ApiError(res.status, e?.code ?? 'error', e?.message ?? `Request failed (${res.status})`, e?.fields);
-  }
-  return data as T;
+async function request<T>(method: string, path: string, body?: unknown, _isForm = false): Promise<T> {
+  return mockRequest<T>(method, path, body instanceof FormData ? undefined : body);
 }
 
 /**
@@ -121,19 +69,8 @@ export const api = {
    * Side effects: fetches the file, then clicks a temporary link to the in-memory blob so the browser saves
    * it; the blob URL is released after 10 s. Unlike request(), a 401 here does not sign the user out.
    */
-  async download(path: string, filename: string): Promise<void> {
-    const t = await token();
-    const res = await fetch(`${BASE}${path}`, { headers: t ? { Authorization: `Bearer ${t}` } : {} });
-    if (!res.ok) {
-      const data = await res.json().catch(() => null);
-      throw new ApiError(res.status, data?.error?.code ?? 'error', data?.error?.message ?? 'Download failed');
-    }
-    const url = URL.createObjectURL(await res.blob());
-    const a = Object.assign(document.createElement('a'), { href: url, download: filename });
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  async download(path: string, _filename: string): Promise<void> {
+    throw new ApiError(501, 'needs_api', `Downloads are not available yet: ${path.split('?')[0]} needs the API, which is paused.`);
   },
 };
 
