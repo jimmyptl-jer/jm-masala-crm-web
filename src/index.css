@@ -14,6 +14,27 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --app-bg: #edf2f8;
+  --brand-navy: #11233b;
+  --brand-navy-rgb: 17 35 59;
+  --brand-ink: #14243a;
+  --brand-ink-rgb: 20 36 58;
+  --brand-blue: #17365f;
+  --brand-blue-rgb: 23 54 95;
+  --brand-green: #16865b;
+  --brand-green-rgb: 22 134 91;
+  --glass-bg: rgba(255, 255, 255, 0.70);
+  --glass-bg-strong: rgba(255, 255, 255, 0.88);
+  --glass-border: rgba(255, 255, 255, 0.82);
+  --glass-blur: 20px;
+  --glass-shadow: 0 8px 32px rgba(28, 47, 78, 0.08), 0 1px 2px rgba(28, 47, 78, 0.04);
+  --panel-radius: 18px;
+  --control-radius: 10px;
+  --focus-ring: rgba(56, 103, 214, 0.65);
+  --motion-fast: 180ms;
+}
+
 /* Global element defaults. */
 @layer base {
   /* Stops mobile browsers from enlarging text after rotation. */
@@ -23,19 +44,47 @@
    * overscroll-behavior-y: none stops the rubber-band bounce / pull-to-refresh effect at the top and bottom
    * of the page.
    */
-  body { @apply bg-cream-100 text-ink font-sans antialiased; overscroll-behavior-y: none; }
+  body {
+    @apply text-ink font-sans antialiased;
+    background:
+      radial-gradient(ellipse at 8% 4%, rgba(93, 108, 255, 0.14), transparent 38%),
+      radial-gradient(ellipse at 92% 12%, rgba(64, 195, 153, 0.12), transparent 32%),
+      linear-gradient(135deg, #f5f8fd, var(--app-bg));
+    background-attachment: fixed;
+    overscroll-behavior-y: none;
+  }
   /* iOS zooms into inputs under 16px; keep them readable and tap-friendly */
   input, select, textarea { font-size: 16px; }
   /* touch-action: manipulation removes the 300 ms tap delay and double-tap zoom on buttons. */
   button { touch-action: manipulation; }
-  /* Visible gold focus outline for keyboard users only. */
-  :focus-visible { @apply outline-2 outline-offset-2 outline-gold-500; }
+  /* Visible blue focus outline for keyboard users only. */
+  :focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
 }
 
 /* Reusable component classes used across the screens. */
 @layer components {
-  /* Standard white panel (used by the Card component and list rows). */
-  .card { @apply rounded-xl border border-cream-200 bg-white shadow-sm; }
+  /* Shared frosted surface for dashboards, cards, list rows and popovers. */
+  .glass-panel {
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--panel-radius);
+    box-shadow: var(--glass-shadow);
+  }
+  .glass-panel-strong {
+    background: var(--glass-bg-strong);
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.92);
+    border-radius: var(--control-radius);
+    box-shadow: var(--glass-shadow);
+  }
+  .glass-interactive { transition: transform var(--motion-fast) ease, box-shadow var(--motion-fast) ease, border-color var(--motion-fast) ease; }
+  .card { @apply glass-panel; }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .glass-interactive:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(28, 47, 78, 0.12); border-color: rgba(255, 255, 255, 0.98); }
+  }
   /* Minimum 44 px touch target (min-h-tap / min-w-tap in tailwind.config.js). */
   .tap { @apply min-h-tap min-w-tap; }
 }
@@ -53,3 +102,7 @@
 .has-tabbar { padding-bottom: calc(5rem + env(safe-area-inset-bottom)); }
 /* From md width up the tab bar is hidden, so only normal padding is needed. */
 @media (min-width: 768px) { .has-tabbar { padding-bottom: 2rem; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

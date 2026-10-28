@@ -10,15 +10,18 @@
  */
 import clsx from 'clsx';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, MessageCircle, NotebookPen, Phone, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { Building2, CheckCircle2, FileText, MessageCircle, NotebookPen, Phone, Plus, Target, Trophy } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { date, money, todayIST, waLink } from '@/lib/format';
-import type { Dashboard, DueRow } from '@/lib/types';
+import type { Dashboard, DueRow, QuoteList } from '@/lib/types';
 import { Button, Card, ErrorNote, PageHeader, Spinner, StatusBadge } from '@/components/ui';
+import { BuyerBoard } from '@/components/buyers/BuyerBoard';
 import { ACTIVITY_ICON, ExternalButton, RouterButton } from '@/components/quote/shared';
 import { LogActivitySheet } from '@/components/quote/LogActivitySheet';
+import { useBuyers } from '@/lib/hooks';
+import { useAuth } from '@/auth/AuthProvider';
 import { t } from '@/strings';
 
 /**
@@ -29,14 +32,6 @@ import { t } from '@/strings';
  * Note: `won_this_month` / `lost_this_month` are counted for the current India calendar month by the API
  * (api/src/services/dashboard.ts), but the Quotes screen they link to shows ALL won / lost quotes.
  */
-const TILES: { key: keyof Dashboard['counts']; status: string; label: string; tone: string }[] = [
-  { key: 'drafts', status: 'draft', label: t.today.tiles.drafts, tone: 'text-stone-800' },
-  { key: 'awaiting_reply', status: 'sent', label: t.today.tiles.awaiting, tone: 'text-sky-900' },
-  { key: 'negotiating', status: 'negotiating', label: t.today.tiles.negotiating, tone: 'text-amber-900' },
-  { key: 'won_this_month', status: 'won', label: t.today.tiles.won, tone: 'text-green-800' },
-  { key: 'lost_this_month', status: 'lost', label: t.today.tiles.lost, tone: 'text-red-800' },
-];
-
 /**
  * Turns a `YYYY-MM-DD` date into the full English weekday name ("Friday") for the page subtitle.
  * @param ymd - calendar date string (the API's `today`, an India date).
@@ -136,6 +131,28 @@ function DueCard({ row, onLog }: { row: DueRow; onLog: (r: DueRow) => void }) {
   );
 }
 
+function SummaryTile({ icon, label, value, detail, href, tone }: {
+  icon: ReactNode; label: string; value: number | string; detail: string; href: string;
+  tone: 'blue' | 'green' | 'amber' | 'violet';
+}) {
+  const colors = {
+    blue: 'bg-blue-100 text-blue-700',
+    green: 'bg-emerald-100 text-emerald-700',
+    amber: 'bg-amber-100 text-amber-700',
+    violet: 'bg-violet-100 text-violet-700',
+  }[tone];
+  return (
+    <Link to={href} className="card glass-interactive flex min-h-[112px] items-center gap-3 p-4 hover:bg-white/90">
+      <span className={clsx('grid h-12 w-12 shrink-0 place-items-center rounded-2xl [&>svg]:h-6 [&>svg]:w-6', colors)}>{icon}</span>
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-slate-600">{label}</span>
+        <span className="mt-0.5 block text-2xl font-bold leading-none tracking-tight text-crm-ink tabular-nums">{value}</span>
+        <span className="mt-1 block truncate text-xs text-slate-500">{detail}</span>
+      </span>
+    </Link>
+  );
+}
+
 /**
  * Today screen (route `/`): the daily dashboard the sales person opens first.
  *
@@ -156,6 +173,9 @@ function DueCard({ row, onLog }: { row: DueRow; onLog: (r: DueRow) => void }) {
 export default function Today() {
   // single query for the whole screen; every quote mutation invalidates ['dashboard'] so it stays fresh
   const dash = useQuery({ queryKey: ['dashboard'], queryFn: () => api.get<Dashboard>('/dashboard') });
+  const buyers = useBuyers();
+  const recentQuotes = useQuery({ queryKey: ['dashboard', 'recent-quotes'], queryFn: () => api.get<QuoteList>('/quotes?limit=5') });
+  const { me } = useAuth();
   const [logRow, setLogRow] = useState<DueRow | null>(null);
   const d = dash.data;
   // show the server's idea of today (India date, NFR-12); fall back to the browser's India date while loading
@@ -164,8 +184,8 @@ export default function Today() {
   return (
     <div>
       <PageHeader
-        title={t.today.title}
-        subtitle={`${weekday(day)}, ${date(day)}`}
+        title={`Good morning, ${me?.full_name || 'there'}`}
+        subtitle={`Your sales overview for ${weekday(day)}, ${date(day)}.`}
         actions={<RouterButton to="/quotes/new" variant="gold"><Plus className="h-5 w-5" aria-hidden />{t.today.newQuote}</RouterButton>}
       />
 
@@ -173,39 +193,54 @@ export default function Today() {
       {dash.isError && <ErrorNote error={dash.error} onRetry={() => void dash.refetch()} />}
 
       {d && (
-        <div className="space-y-4">
-          <nav aria-label={t.today.tilesLabel} className="grid grid-cols-3 gap-2 md:grid-cols-5 md:gap-3">
-            {TILES.map((tile) => (
-              <Link
-                key={tile.key} to={`/quotes?status=${tile.status}`} aria-label={t.today.tileAria(tile.label, d.counts[tile.key])}
-                className="card flex min-h-[72px] flex-col justify-between p-3 hover:bg-forest-50 active:bg-forest-50"
-              >
-                <span className={clsx('text-2xl font-bold tabular-nums md:text-3xl', tile.tone)}>{d.counts[tile.key]}</span>
-                <span className="text-xs leading-tight text-ink/70 md:text-sm">{tile.label}</span>
-              </Link>
-            ))}
+        <div className="space-y-5">
+          <nav aria-label="Sales summary" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <SummaryTile icon={<Building2 />} label="Total buyers" value={buyers.data?.length ?? '—'} detail="In your buyer list" href="/buyers" tone="blue" />
+            <SummaryTile icon={<FileText />} label="Open quotations" value={d.counts.awaiting_reply + d.counts.negotiating} detail="Awaiting a buyer decision" href="/quotes" tone="green" />
+            <SummaryTile icon={<Target />} label="Follow-ups due" value={d.due.length} detail={d.due.length ? 'Needs attention today' : 'You are all caught up'} href="/follow-ups" tone="amber" />
+            <SummaryTile icon={<Trophy />} label="Won this month" value={d.counts.won_this_month} detail="Closed won quotations" href="/quotes?status=won" tone="violet" />
           </nav>
 
-          <section aria-labelledby="due-h">
-            <h2 id="due-h" className="font-serif text-xl font-semibold md:text-2xl text-forest-900">{t.today.dueTitle}</h2>
-            {d.due.length > 0 && <p className="mb-2 text-sm text-ink/65">{t.today.dueCount(d.due.length)}</p>}
-            {d.due.length === 0 ? (
-              <Card className="mt-2 flex flex-col items-center gap-2 px-4 py-8 text-center">
-                <CheckCircle2 className="h-10 w-10 text-green-700" aria-hidden />
-                <p className="text-xl font-semibold text-forest-900">{t.today.caughtUp}</p>
-                <p className="text-base text-ink/70">{t.today.caughtUpHint}</p>
-                <RouterButton to="/quotes/new" variant="gold" className="mt-2"><Plus className="h-5 w-5" aria-hidden />{t.today.newQuote}</RouterButton>
-              </Card>
-            ) : (
-              <div className="grid gap-3 xl:grid-cols-2">
-                {d.due.map((r) => <DueCard key={r.id} row={r} onLog={setLogRow} />)}
-              </div>
-            )}
+          <section className="glass-panel p-3 md:p-4" aria-labelledby="pipeline-heading">
+            <div className="mb-3 flex items-center justify-between gap-3 px-1">
+              <div><h2 id="pipeline-heading" className="text-lg font-semibold tracking-tight text-crm-ink md:text-xl">Buyer pipeline</h2><p className="text-sm text-slate-500">Move every relationship toward its next step.</p></div>
+              <Link to="/buyers" className="tap shrink-0 rounded-lg px-3 text-sm font-semibold text-blue-700 hover:bg-blue-50">View buyers <span aria-hidden>→</span></Link>
+            </div>
+            {buyers.isPending ? <Spinner /> : buyers.isError ? <ErrorNote error={buyers.error} onRetry={() => void buyers.refetch()} /> : <BuyerBoard buyers={buyers.data ?? []} />}
           </section>
+
+          <div className="grid gap-4 xl:grid-cols-[1.1fr_1fr]">
+            <section className="glass-panel min-w-0 p-4" aria-labelledby="due-h">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div><h2 id="due-h" className="text-lg font-semibold tracking-tight text-crm-ink">Follow-ups due today</h2><p className="text-sm text-slate-500">{d.due.length} buyer{d.due.length === 1 ? '' : 's'} to contact</p></div>
+                <Link to="/quotes" className="tap rounded-lg px-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">View all</Link>
+              </div>
+              {d.due.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-white/40 px-4 py-7 text-center">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-600" aria-hidden />
+                  <p className="font-semibold text-crm-ink">{t.today.caughtUp}</p><p className="text-sm text-slate-500">{t.today.caughtUpHint}</p>
+                  <RouterButton to="/quotes/new" variant="gold" className="mt-1"><Plus className="h-4 w-4" aria-hidden />{t.today.newQuote}</RouterButton>
+                </div>
+              ) : <div className="space-y-2">{d.due.slice(0, 4).map((r) => <DueCard key={r.id} row={r} onLog={setLogRow} />)}</div>}
+            </section>
+
+            <section className="glass-panel min-w-0 p-4" aria-labelledby="recent-quotes-heading">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div><h2 id="recent-quotes-heading" className="text-lg font-semibold tracking-tight text-crm-ink">Recent quotations</h2><p className="text-sm text-slate-500">The latest quote activity</p></div>
+                <Link to="/quotes" className="tap rounded-lg px-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">View all</Link>
+              </div>
+              {recentQuotes.isPending ? <Spinner /> : recentQuotes.isError ? <ErrorNote error={recentQuotes.error} onRetry={() => void recentQuotes.refetch()} /> : recentQuotes.data?.data.length ? (
+                <div className="overflow-x-auto"><table className="w-full min-w-[500px] text-left text-sm">
+                  <thead><tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500"><th className="px-2 py-2 font-medium">Ref</th><th className="px-2 py-2 font-medium">Buyer</th><th className="px-2 py-2 font-medium">Value</th><th className="px-2 py-2 font-medium">Status</th></tr></thead>
+                  <tbody>{recentQuotes.data.data.map((q) => <tr key={q.id} className="border-b border-slate-100 last:border-0 hover:bg-white/50"><td className="px-2 py-3"><Link to={`/quotes/${q.id}`} className="font-medium text-blue-700 hover:underline">{q.number ?? 'Draft'}</Link></td><td className="max-w-[170px] truncate px-2 py-3 font-medium text-slate-800">{q.buyer_name}</td><td className="whitespace-nowrap px-2 py-3 tabular-nums text-slate-600">{money(q.grand_total, q.currency)}</td><td className="px-2 py-3"><StatusBadge status={q.status} /></td></tr>)}</tbody>
+                </table></div>
+              ) : <div className="rounded-xl border border-dashed border-slate-200 bg-white/40 px-4 py-8 text-center text-sm text-slate-500">No quotations to show yet.</div>}
+            </section>
+          </div>
 
           {d.expiring.length > 0 && (
             <section aria-labelledby="exp-h">
-              <h2 id="exp-h" className="font-serif text-xl font-semibold md:text-2xl text-forest-900">{t.today.expiringTitle}</h2>
+              <h2 id="exp-h" className="mb-2 text-xl font-semibold text-crm-ink">{t.today.expiringTitle}</h2>
               <p className="mb-2 text-sm text-ink/65">{t.today.expiringHint}</p>
               <Card>
                 <ul className="divide-y divide-cream-200">

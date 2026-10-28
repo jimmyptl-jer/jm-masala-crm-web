@@ -33,6 +33,7 @@ import { ApiError, api } from '@/lib/api';
 import { money } from '@/lib/format';
 import { useBuyers, useDebounced, useProducts, useSendChannels, useSettings, useUnsavedChanges } from '@/lib/hooks';
 import type { Buyer, CalcResult, Currency, Incoterm, Product, QuoteDetail, QuoteType, SendResult } from '@/lib/types';
+import { isApprovedProduct } from '@/lib/products';
 import { t } from '@/strings';
 
 // all words on this screen (labels, errors, toasts) come from strings/quoteForm.ts
@@ -233,14 +234,14 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
   // id -> Product lookup for every product the form may show: the active product list plus placeholders for
   // products used on saved lines that are no longer listed (archived).
   const productMap = useMemo(() => {
-    const m = new Map<string, Product>((productsQ.data ?? []).map((p) => [p.id, p]));
+    const m = new Map<string, Product>((productsQ.data ?? []).filter((p) => isApprovedProduct(p.name)).map((p) => [p.id, p]));
     for (const rev of detail?.revisions ?? []) for (const l of rev.lines) if (!m.has(l.product_id)) m.set(l.product_id, archivedProduct(l));
     return m;
   }, [productsQ.data, detail]);
   // SearchSelect options for products ("Name - Grade", with the unit on the second line). Archived products
   // are listed only while a line on this form still uses them.
   const productOptions: Option[] = useMemo(
-    () => [...productMap.values()].filter((p) => !p.archived || form.lines.some((l) => l.product_id === p.id))
+    () => [...productMap.values()].filter((p) => (isApprovedProduct(p.name) && !p.archived) || form.lines.some((l) => l.product_id === p.id))
       .map((p) => ({ value: p.id, label: p.grade ? `${p.name} – ${p.grade}` : p.name, sub: p.unit })),
     [productMap, form.lines],
   );

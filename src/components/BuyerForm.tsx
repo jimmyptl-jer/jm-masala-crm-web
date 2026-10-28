@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { BuyerCrmFields } from '@/components/buyers/BuyerCrmFields';
 import { ApiError, api } from '@/lib/api';
 import { GSTIN_RE, INDIAN_STATES } from '@/lib/india';
+import { isApprovedProduct } from '@/lib/products';
 import type { Buyer, BuyerInput, Currency, Incoterm, QuoteType } from '@/lib/types';
 import { t } from '@/strings';
 import { Button, ErrorNote, Input, Segmented, Select, Textarea, useToast } from './ui';
@@ -96,6 +97,8 @@ export function BuyerForm({ initial, onSaved, onCancel, defaultType = 'export' }
   const validate = (): Record<string, string> => {
     const e: Record<string, string> = {};
     if (!f.company_name.trim()) e.company_name = `${s.companyName} ${t.common.required}`;
+    const email = text('email').trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'Enter a valid email address';
     if (domestic) {
       if (!f.state_code) e.state = s.chooseState;
       const g = text('gstin').trim().toUpperCase();
@@ -121,7 +124,11 @@ export function BuyerForm({ initial, onSaved, onCancel, defaultType = 'export' }
     setBusy(true);
     setFatal(null);
     try {
-      const body = { ...f, gstin: text('gstin').trim().toUpperCase() };
+      const body = {
+        ...f,
+        gstin: text('gstin').trim().toUpperCase(),
+        interested_products: (f.interested_products ?? []).filter((name) => isApprovedProduct(name.split(' (')[0] ?? name)),
+      };
       const saved = initial
         ? await api.patch<Buyer>(`/buyers/${initial.id}`, body)
         : await api.post<Buyer>('/buyers', body);

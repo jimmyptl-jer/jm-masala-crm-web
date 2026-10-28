@@ -5,7 +5,10 @@
  */
 import type { Buyer, Product, QuoteDetail, QuoteLine, Revision, Settings, Me, TeamMember, UserRow, Currency, QuoteStatus, QuoteType } from '../types';
 
-const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+const day = (offset: number) => {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+  return new Date(Date.parse(`${today}T00:00:00Z`) + offset * 86_400_000).toISOString().slice(0, 10);
+};
 const iso = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString();
 
 export const ME: Me = { id: 'u1', email: 'demo@example.com', role: 'admin', full_name: 'Demo User', phone: null };
@@ -32,9 +35,11 @@ export const PRODUCTS: Product[] = [
   product('p1', 'Cumin Seeds', '090931', '2850.00'),
   product('p2', 'Coriander Seeds', '090921', '1150.00'),
   product('p3', 'Fennel Seeds', '090961', '1900.00'),
-  product('p4', 'Turmeric Fingers', '091030', '1650.00'),
-  product('p5', 'Sesame Seeds', '120740', '1700.00'),
-  product('p6', 'Red Chilli', '090421', '1500.00'),
+  product('p4', 'Fenugreek Seeds', '091099', '1650.00'),
+  product('p5', 'Psyllium', '121190', '1700.00'),
+  product('p6', 'Turmeric', '091030', '1500.00'),
+  product('p7', 'Red Chili Powder', '090422', '1500.00'),
+  product('p8', 'Mustard Seeds', '120750', '1350.00'),
 ];
 
 const buyer = (id: string, type: QuoteType, company: string, city: string, place: Partial<Buyer>): Buyer => ({

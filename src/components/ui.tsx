@@ -23,10 +23,10 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'gold';
 // Tailwind classes per variant, including hover/active/disabled colours. Brand colours (forest, gold,
 // cream) are defined in tailwind.config.js.
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-forest-900 text-white hover:bg-forest-800 active:bg-forest-950 disabled:bg-forest-900/50',
-  gold: 'bg-gold-500 text-forest-950 hover:bg-gold-300 disabled:bg-gold-500/50',
-  secondary: 'bg-white text-forest-900 border border-forest-900/25 hover:bg-forest-50 disabled:text-forest-900/40',
-  ghost: 'text-forest-800 hover:bg-forest-50 disabled:text-forest-800/40',
+  primary: 'bg-crm-blue text-white shadow-sm hover:brightness-110 active:bg-crm-navy disabled:opacity-50',
+  gold: 'bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 disabled:bg-emerald-600/50',
+  secondary: 'border border-slate-200 bg-white/75 text-[#17365f] shadow-sm hover:bg-white disabled:text-slate-400',
+  ghost: 'text-[#274768] hover:bg-white/70 disabled:text-slate-400',
   danger: 'bg-red-700 text-white hover:bg-red-800 disabled:bg-red-700/50',
 };
 
@@ -58,7 +58,7 @@ export function Button({ variant = 'primary', loading, className, children, disa
 // ---- Form fields ------------------------------------------------------------------------------
 // Shared Tailwind classes for text inputs, selects and textareas: full width, 44 px tall, gold focus ring,
 // grey when disabled. The red border for errors is added by each component.
-const fieldBase = 'w-full min-h-tap rounded-lg border bg-white px-3 py-2 text-base text-ink placeholder:text-ink/40 focus:border-gold-600 focus:outline-none focus:ring-2 focus:ring-gold-500/40 disabled:bg-cream-100 disabled:text-ink/60';
+const fieldBase = 'w-full min-h-tap rounded-lg border border-slate-200/90 bg-white/85 px-3 py-2 text-base text-ink placeholder:text-slate-400 focus:border-crm-blue focus:outline-none focus:ring-2 focus:ring-crm-blue/20 disabled:bg-slate-100 disabled:text-ink/60';
 
 /**
  * Label + control + hint/error wrapper that every form control is built on.
@@ -266,7 +266,7 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="font-serif text-2xl font-semibold leading-tight md:text-3xl text-forest-900">{title}</h1>
+        <h1 className="font-sans text-2xl font-semibold leading-tight tracking-tight text-crm-ink md:text-3xl">{title}</h1>
         {subtitle && <p className="mt-0.5 text-sm text-ink/60">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -304,14 +304,14 @@ export function Sheet({ open, onClose, title, children, footer, wide }:
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className={`relative flex max-h-[92dvh] w-full flex-col rounded-t-2xl bg-cream-50 shadow-xl md:rounded-2xl ${wide ? 'md:max-w-3xl' : 'md:max-w-lg'}`}>
-        <div className="flex items-center justify-between border-b border-cream-200 px-4 py-3">
-          <h2 className="font-serif text-xl font-semibold md:text-2xl text-forest-900">{title}</h2>
-          <button type="button" onClick={onClose} aria-label={t.common.close} className="tap -mr-2 rounded-lg text-forest-900 hover:bg-cream-200"><X className="mx-auto h-5 w-5" /></button>
+      <div className="absolute inset-0 bg-slate-950/35 backdrop-blur-sm" onClick={onClose} />
+      <div className={`glass-panel-strong relative flex max-h-[92dvh] w-full flex-col rounded-t-2xl md:rounded-2xl ${wide ? 'md:max-w-3xl' : 'md:max-w-lg'}`}>
+        <div className="flex items-center justify-between border-b border-slate-200/80 px-4 py-3">
+          <h2 className="font-sans text-xl font-semibold tracking-tight text-crm-ink md:text-2xl">{title}</h2>
+          <button type="button" onClick={onClose} aria-label={t.common.close} className="tap -mr-2 rounded-lg text-slate-600 hover:bg-slate-100"><X className="mx-auto h-5 w-5" /></button>
         </div>
         <div className={`flex-1 overflow-y-auto px-4 py-4 ${wide ? 'md:px-6' : ''}`}>{children}</div>
-        {footer && <div className="safe-bottom border-t border-cream-200 px-4 py-3">{footer}</div>}
+        {footer && <div className="safe-bottom border-t border-slate-200/80 px-4 py-3">{footer}</div>}
       </div>
     </div>
   );

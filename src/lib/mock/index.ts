@@ -8,14 +8,14 @@
  */
 import { ApiError } from '../api';
 import type {
-  Buyer, BuyerDetail, BuyerSummary, CalcResult, Dashboard, Product, QuoteDetail, QuoteListRow, Stage,
+  Buyer, BuyerDetail, BuyerSummary, CalcResult, Currency, Dashboard, Product, QuoteDetail, QuoteListRow, Stage,
 } from '../types';
 import { BUYERS, ME, PRODUCTS, QUOTES, SETTINGS, TEAM, USERS } from './data';
 
 const STAGES: Stage[] = ['new_lead', 'contacted', 'qualified', 'requirements_received', 'quotation_sent', 'sample_requested',
   'sample_payment_pending', 'sample_dispatched', 'sample_approved', 'negotiation', 'po_received', 'won', 'lost'];
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 const notFound = () => new ApiError(404, 'not_found', 'Not found (sample data)');
 const needsApi = (m: string, p: string) => new ApiError(501, 'needs_api', `Not available yet: ${m} ${p.split('?')[0]} needs the API, which is paused.`);
@@ -49,7 +49,34 @@ function summary(): BuyerSummary {
 }
 
 function dashboard(): Dashboard {
-  return { today: today(), due: [], expiring: [], counts: { drafts: QUOTES.filter((q) => q.status === 'draft').length, awaiting_reply: 0, negotiating: 0, won_this_month: 0, lost_this_month: 0 } };
+  const day = today();
+  const dayOffset = (date: string) => Math.floor((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${date}T00:00:00Z`)) / 86_400_000);
+  const open = QUOTES.filter((q): q is QuoteDetail & { grand_total: string; currency: Currency } =>
+    (q.status === 'sent' || q.status === 'negotiating') && q.grand_total !== null && q.currency !== null,
+  );
+  const due = open.filter((q) => q.next_followup && q.next_followup <= day).map((q) => ({
+    id: q.id, number: q.number ?? 'Draft', status: q.status, next_followup: q.next_followup!, grand_total: q.grand_total,
+    currency: q.currency, buyer_id: q.buyer_id, buyer_name: q.buyer.company_name, buyer_phone: q.buyer.phone,
+    buyer_whatsapp: q.buyer.whatsapp, days_since_sent: Math.max(0, dayOffset(q.revisions[q.revisions.length - 1]?.issued_at?.slice(0, 10) ?? day)),
+    days_overdue: Math.max(0, dayOffset(q.next_followup!)), last_kind: q.activities[0]?.kind ?? null,
+    last_body: q.activities[0]?.body ?? null, last_at: q.activities[0]?.happened_at ?? null,
+  }));
+  const expiring = open.filter((q) => q.valid_until && q.valid_until >= day && q.valid_until <= new Date(Date.parse(`${day}T00:00:00Z`) + 3 * 86_400_000).toISOString().slice(0, 10)).map((q) => ({
+    id: q.id, number: q.number ?? 'Draft', status: q.status, valid_until: q.valid_until!, grand_total: q.grand_total,
+    currency: q.currency, buyer_id: q.buyer_id, buyer_name: q.buyer.company_name, days_left: Math.max(0, -dayOffset(q.valid_until!)),
+  }));
+  const month = day.slice(0, 7);
+  const inMonth = (q: QuoteDetail) => (q.revisions[q.revisions.length - 1]?.issued_at ?? '').slice(0, 7) === month;
+  return {
+    today: day, due, expiring,
+    counts: {
+      drafts: QUOTES.filter((q) => q.status === 'draft').length,
+      awaiting_reply: QUOTES.filter((q) => q.status === 'sent').length,
+      negotiating: QUOTES.filter((q) => q.status === 'negotiating').length,
+      won_this_month: QUOTES.filter((q) => q.status === 'won' && inMonth(q)).length,
+      lost_this_month: QUOTES.filter((q) => q.status === 'lost' && inMonth(q)).length,
+    },
+  };
 }
 
 function calc(): CalcResult {

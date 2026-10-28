@@ -15,6 +15,9 @@
  */
 export const AUTH_BYPASS = import.meta.env.VITE_AUTH_BYPASS === 'true';
 
+/** The current API adapter is wired to in-memory mock data, never production records. */
+export const MOCK_API = true;
+
 /**
  * True when VITE_SIMPLE_AUTH is 'true': sign in with e-mail and password against the API's fixed users
  * (POST /auth/login) instead of Supabase Auth. The token is kept in localStorage (key below) for 30 days.

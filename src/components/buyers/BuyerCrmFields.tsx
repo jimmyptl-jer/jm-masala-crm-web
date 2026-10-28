@@ -10,6 +10,7 @@ import { useMemo, useState } from 'react';
 import { BUSINESS_TYPES, CHANNELS, STAGES } from '@/lib/crm';
 import { useProducts, useTeam } from '@/lib/hooks';
 import type { BuyerInput, BusinessType, Channel, Stage } from '@/lib/types';
+import { isApprovedProduct } from '@/lib/products';
 import { t } from '@/strings';
 import { Input, Select, Textarea } from '../ui';
 
@@ -28,7 +29,7 @@ export function BuyerCrmFields({ f, set, errors }: {
   // the different grades of one spice can be ticked separately. The label text is what is stored on the buyer.
   const products = useProducts();
   const names = useMemo(
-    () => [...new Set((products.data ?? []).map((p) => (p.grade ? `${p.name} (${p.grade})` : p.name)))].sort((a, b) => a.localeCompare(b)),
+    () => [...new Set((products.data ?? []).filter((p) => isApprovedProduct(p.name)).map((p) => (p.grade ? `${p.name} (${p.grade})` : p.name)))].sort((a, b) => a.localeCompare(b)),
     [products.data],
   );
   // text typed in the small search box above the checklist
@@ -37,7 +38,7 @@ export function BuyerCrmFields({ f, set, errors }: {
   const text = (k: keyof BuyerInput) => (f[k] as string | null | undefined) ?? '';
   const chosen = f.interested_products ?? [];
   // Keep products the buyer already has even if they were archived or renamed in the catalogue.
-  const allNames = [...new Set([...names, ...chosen])];
+  const allNames = [...new Set([...names, ...chosen.filter((name) => isApprovedProduct(name.split(' (')[0] ?? name))])];
   const shown = find.trim() ? allNames.filter((n) => n.toLowerCase().includes(find.trim().toLowerCase())) : allNames;
 
   /** Adds or removes one product name from the interest list. */

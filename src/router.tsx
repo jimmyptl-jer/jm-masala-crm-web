@@ -8,11 +8,16 @@
  */
 
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
-import { RecoveryRedirect, RequireAuth } from '@/auth/AuthProvider';
+import { RecoveryRedirect, RequireAdmin, RequireAuth } from '@/auth/AuthProvider';
 import { Layout } from '@/components/Layout';
+import Today from '@/pages/Today';
 import BuyerDetail from '@/pages/BuyerDetail';
 import Buyers from '@/pages/Buyers';
+import Followups from '@/pages/Followups';
+import Products from '@/pages/Products';
+import Settings from '@/pages/Settings';
 import Login from '@/pages/Login';
+import Orders from '@/pages/Orders';
 import QuoteDetail from '@/pages/QuoteDetail';
 import QuoteForm from '@/pages/QuoteForm';
 import Quotes from '@/pages/Quotes';
@@ -50,14 +55,19 @@ export const router = createBrowserRouter([
           {
             element: <Layout />,
             children: [
-              { path: '/', element: <Navigate to="/quotes" replace /> },
+              { path: '/', element: <Today /> },
               { path: '/quotes', element: <Quotes /> },
               { path: '/quotes/new', element: <QuoteForm /> },
               { path: '/quotes/:id/edit', element: <QuoteForm /> },
               { path: '/quotes/:id', element: <QuoteDetail /> },
               { path: '/buyers', element: <Buyers /> },
+              { path: '/pipeline', element: <Buyers initialView="board" /> },
               { path: '/buyers/:id', element: <BuyerDetail /> },
-              { path: '*', element: <Navigate to="/quotes" replace /> },
+              { path: '/follow-ups', element: <Followups /> },
+              { path: '/products', element: <Products /> },
+              { path: '/orders', element: <Orders /> },
+              { element: <RequireAdmin />, children: [{ path: '/settings', element: <Settings /> }] },
+              { path: '*', element: <Navigate to="/" replace /> },
             ],
           },
         ],

@@ -15,6 +15,12 @@ export default {
       // bg-cream-100. forest = deep greens (900 is the main brand colour, used for the sidebar and
       // buttons), gold = accent, cream = page and panel backgrounds, wood = brown accents, ink = body text.
       colors: {
+        crm: {
+          navy: 'rgb(var(--brand-navy-rgb) / <alpha-value>)',
+          ink: 'rgb(var(--brand-ink-rgb) / <alpha-value>)',
+          blue: 'rgb(var(--brand-blue-rgb) / <alpha-value>)',
+          green: 'rgb(var(--brand-green-rgb) / <alpha-value>)',
+        },
         forest: { 950: '#142214', 900: '#1a2e1a', 800: '#2d4a2d', 700: '#3b5c3b', 600: '#4a6741', 100: '#e6efe0', 50: '#f2f7ee' },
         gold: { 600: '#a8893a', 500: '#c9a84c', 300: '#e2c97e', 100: '#f5e9c8' },
         cream: { 50: '#fdfbf7', 100: '#faf6ee', 200: '#f1e9d8' },

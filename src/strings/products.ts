@@ -37,6 +37,7 @@ export const products = {
   newTitle: 'New product',
   editTitle: 'Edit product',
   name: 'Product name',
+  approvedOnly: 'Choose an approved JM Masala product category.',
   grade: 'Grade',
   cleaning: 'Cleaning',
   cleaningHint: 'For example Sortex Clean or Machine Clean.',

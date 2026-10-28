@@ -18,6 +18,7 @@ import { Button, Card, EmptyState, ErrorNote, Input, PageHeader, Sheet, Spinner 
 import { qty, money } from '@/lib/format';
 import { useDebounced, useProducts } from '@/lib/hooks';
 import type { Product } from '@/lib/types';
+import { isApprovedProduct } from '@/lib/products';
 import { t } from '@/strings';
 
 // Shorthand for the products strings.
@@ -56,7 +57,7 @@ export default function Products() {
   // GET /products with the current filters; an empty search is turned into 'not sent' by qs().
   const query = useProducts({ q: dq || undefined, archived: showArchived ? 'all' : 'false' });
   // Products to show (empty array while loading).
-  const rows = query.data ?? [];
+  const rows = (query.data ?? []).filter((product) => isApprovedProduct(product.name));
   /** Closes the add / edit sheet. Used for the sheet's close button, the form's Cancel and after a save. */
   const close = () => setEditing(null);
 

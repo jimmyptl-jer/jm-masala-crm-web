@@ -80,9 +80,9 @@ export default function Login() {
   // True after "send reset link" was pressed; shows the confirmation text.
   const [sent, setSent] = useState(false);
 
-  // Already signed in, or login is switched off: nothing to do here, redirect. (After all hooks above, so
-  // hook order stays stable.)
-  if (signedIn || AUTH_BYPASS) return <Navigate to={AUTH_BYPASS ? '/' : from} replace />;
+  // Already signed in: return to the requested screen. In local demo bypass mode, keep the sign-in screen
+  // visible so one click on Sign in can take the user straight to the sample dashboard.
+  if (signedIn) return <Navigate to={from} replace />;
 
   /**
    * Sign-in form submit. Ignored while busy. Checks that email and password are filled (messages under the
@@ -94,6 +94,10 @@ export default function Login() {
   const signIn = async (ev: FormEvent) => {
     ev.preventDefault();
     if (busy) return;
+    if (AUTH_BYPASS) {
+      navigate('/', { replace: true });
+      return;
+    }
     const fe: { email?: string; password?: string } = {};
     if (!email.trim()) fe.email = s.emailRequired;
     if (!password) fe.password = s.passwordRequired;

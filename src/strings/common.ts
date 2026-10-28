@@ -1,6 +1,6 @@
 // All user-facing text lives under src/strings so a Gujarati or Hindi set can be added later.
 export const common = {
-  appName: 'JM Masala Quotes',
+  appName: 'JM Masala CRM',
   loading: 'Loading…',
   save: 'Save',
   saving: 'Saving…',
@@ -32,10 +32,13 @@ export const common = {
 };
 
 export const nav = {
-  today: 'Today',
+  today: 'Dashboard',
   quotes: 'Quotes',
   newQuote: 'New quote',
   buyers: 'Buyers',
+  pipeline: 'Buyer Pipeline',
+  followups: 'Follow-ups',
+  orders: 'Orders',
   marketing: 'Marketing',
   products: 'Products',
   settings: 'Settings',

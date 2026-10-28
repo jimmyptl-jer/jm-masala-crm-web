@@ -20,6 +20,7 @@ import { useRef, useState, type FormEvent } from 'react';
 import { Button, ErrorNote, Input, NumberInput, Select, Textarea, useToast } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import type { Product } from '@/lib/types';
+import { APPROVED_PRODUCT_NAMES, isApprovedProduct } from '@/lib/products';
 import { t } from '@/strings';
 
 // Shorthand for the products strings.
@@ -197,6 +198,7 @@ export function ProductForm({ initial, onSaved, onCancel }: { initial?: Product;
     if (busy) return;
     const v: Record<string, string> = {};
     if (!f.name.trim()) v.name = s.nameRequired;
+    else if (!isApprovedProduct(f.name)) v.name = s.approvedOnly;
     if (!f.gst_rate.trim()) v.gst_rate = s.gstRequired;
     setErrors(v);
     if (Object.keys(v).length) return;
@@ -257,7 +259,11 @@ export function ProductForm({ initial, onSaved, onCancel }: { initial?: Product;
 
   return (
     <form onSubmit={submit} className="space-y-3" noValidate>
-      <Input label={s.name} value={f.name} onChange={(e) => set('name', e.target.value)} error={errors.name} autoComplete="off" />
+      <Select label={s.name} value={f.name} onChange={(e) => set('name', e.target.value)} error={errors.name}>
+        {f.name && !APPROVED_PRODUCT_NAMES.includes(f.name as typeof APPROVED_PRODUCT_NAMES[number]) && <option value={f.name}>{f.name} · legacy item</option>}
+        <option value="">Choose a product</option>
+        {APPROVED_PRODUCT_NAMES.map((name) => <option key={name} value={name}>{name}</option>)}
+      </Select>
       <Input label={s.grade} optional value={f.grade} onChange={(e) => set('grade', e.target.value)} error={errors.grade} autoComplete="off" />
       <div className="grid gap-3 sm:grid-cols-3">
         <Input label={s.cleaning} optional hint={s.cleaningHint} value={f.cleaning} onChange={(e) => set('cleaning', e.target.value)} error={errors.cleaning} autoComplete="off" />

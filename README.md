@@ -16,14 +16,17 @@ API as text and is only formatted for display (`src/lib/format.ts`). To change a
 | Sign in | `/login` | `pages/Login.tsx` | Supabase Auth directly (skipped when login is bypassed) |
 | Reset password | `/reset-password` | `pages/ResetPassword.tsx` | Supabase Auth directly |
 | **Today** (dashboard) | `/` | `pages/Today.tsx` | `GET /dashboard`; *Log activity* → `POST /quotes/:id/activities` |
+| Buyer pipeline | `/pipeline` | `pages/Buyers.tsx` + `components/buyers/BuyerBoard.tsx` | `GET /buyers`; Kanban and table views share the buyer filters |
 | **Quotes** (list) | `/quotes` | `pages/Quotes.tsx` | `GET /quotes`, `GET /quotes/export.xlsx` |
 | **New quote / Edit draft** | `/quotes/new`, `/quotes/:id/edit` | `pages/QuoteForm.tsx` (+ `components/quoteform/`) | `POST /quotes/calculate` (live totals), `GET /products/:id/price-hints`, `POST /quotes`, `PUT /quotes/:id/draft`, `POST /quotes/:id/issue`, `POST /quotes/:id/revisions/:rev/send` (Issue & send sheet), `GET /send-channels`, `GET /quotes/:id` |
 | **Quote detail** | `/quotes/:id` | `pages/QuoteDetail.tsx` (+ `components/quote/`) | `GET /quotes/:id`, revise, status, duplicate, follow-up, activities, PDF link, retry PDF, delete draft |
-| Buyers | `/buyers` | `pages/Buyers.tsx` | `GET /buyers` (filters: stage, channel, follow-ups due), `POST /buyers` |
+| Buyers (table/Kanban switch) | `/buyers` | `pages/Buyers.tsx` + `components/buyers/BuyerBoard.tsx` | `GET /buyers` (filters: stage, channel, follow-ups due), `POST /buyers` |
 | Buyer detail | `/buyers/:id` | `pages/BuyerDetail.tsx` (+ `components/buyers/BuyerPipelineCard.tsx`) | `GET /buyers/:id`, `PATCH /buyers/:id` (incl. quick stage change), `GET /team` |
+| Follow-ups | `/follow-ups` | `pages/Followups.tsx` | `GET /dashboard`, `GET /quotes`, `GET /buyers`; log contact via `POST /quotes/:id/activities` |
 | **Marketing** | `/marketing` (`?tab=` overview · campaigns · templates · files), `/marketing/campaigns/new`, `/marketing/campaigns/:id` | `pages/Marketing.tsx` (+ `components/marketing/*`), `pages/CampaignNew.tsx` (4-step composer), `pages/CampaignDetail.tsx` (report) | `GET /buyers/summary`, `/marketing/*` |
 | **Trade Intelligence** | `/intelligence` (`?tab=` markets · buyers · shipments · data) | `pages/Intelligence.tsx` (+ `components/trade/*`) | `/trade/*` |
 | Products | `/products` | `pages/Products.tsx` (+ `components/products/ProductForm.tsx`) | `GET /products`, `POST /products`, `PATCH /products/:id`, `POST`/`DELETE /products/:id/image` (packaging picture) |
+| Orders (handoff) | `/orders` | `pages/Orders.tsx` | `GET /quotes?status=won` (read-only; fulfillment tracking is not in the current data model) |
 | Settings (admin) | `/settings` | `pages/Settings.tsx` (+ `components/settings/*`) | `GET/PUT /settings`, `POST /settings/logo`, `GET /users`, `PATCH /users/:id`, Excel import routes |
 
 The URL → screen table lives in code in `src/router.tsx`.
