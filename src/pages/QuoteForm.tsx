@@ -259,9 +259,8 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
   }, [productsQ.data, detail]);
   // SearchSelect options for products ("Name - Grade", with the unit on the second line). Archived products
   // are listed only while a line on this form still uses them.
-  const productOptions: Option[] = useMemo(
-    () => [...productMap.values()].filter((p) => (isApprovedProduct(p.name) && !p.archived) || form.lines.some((l) => l.product_id === p.id))
-      .map((p) => ({ value: p.id, label: p.grade ? `${p.name} – ${p.grade}` : p.name, sub: p.unit })),
+  const catalogue: Product[] = useMemo(
+    () => [...productMap.values()].filter((p) => (isApprovedProduct(p.name) && !p.archived) || form.lines.some((l) => l.product_id === p.id)),
     [productMap, form.lines],
   );
 
@@ -387,6 +386,17 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
   };
 
   /** "Add product" button: appends an empty line, marks the form dirty and clears the `lines` error. */
+  /** Duplicate button: inserts a copy of the line (same product, grade, packing, quantity, rate) right below it, with a new client id. */
+  const duplicateLine = (uid: string) => {
+    setForm((f) => {
+      const i = f.lines.findIndex((l) => l.uid === uid);
+      if (i < 0) return f;
+      const copy = { ...f.lines[i]!, uid: newLine().uid };
+      return { ...f, lines: [...f.lines.slice(0, i + 1), copy, ...f.lines.slice(i + 1)] };
+    });
+    setDirty(true);
+    clearErrors(['lines']);
+  };
   const addLine = () => { setForm((f) => ({ ...f, lines: [...f.lines, newLine()] })); setDirty(true); clearErrors(['lines']); };
   /**
    * Removes one product line (the trash button; it is hidden when only one line exists, and this also refuses
@@ -793,14 +803,18 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
             {errors.lines && <p role="alert" className="text-sm text-red-700">{errors.lines}</p>}
             {form.lines.map((l, i) => (
               <LineCard
-                key={l.uid} index={i} line={l} product={productMap.get(l.product_id)} productOptions={productOptions}
+                key={l.uid} index={i} line={l} product={productMap.get(l.product_id)} catalogue={catalogue}
                 currency={currency} type={form.type} buyerId={form.buyer_id} showCost={showCost}
                 calcLine={calcLineFor(l.uid)} errors={lineErr(i)} canRemove={form.lines.length > 1}
                 onChange={(patch, clear) => updLine(l.uid, patch, clear as string[] | undefined)}
-                onProduct={(pid) => changeProduct(l.uid, pid)} onRemove={() => removeLine(l.uid)}
+                onProduct={(pid) => changeProduct(l.uid, pid)} onDuplicate={() => duplicateLine(l.uid)} onRemove={() => removeLine(l.uid)}
               />
             ))}
             <button type="button" onClick={addLine} className="inline-flex items-center gap-1 text-sm font-bold text-paprika hover:text-paprika-700"><Plus className="h-4 w-4" aria-hidden />{s.addProduct}</button>
+            <div className="flex flex-wrap items-baseline justify-between gap-2 border-t border-line pt-3 text-sm text-ink-muted">
+              <span>{s.linesFooter(form.lines.filter((l) => l.product_id).length)}</span>
+              {calc && <span className="text-lg font-bold tabular-nums text-ink">{money(calc.subtotal, currency)}</span>}
+            </div>
 
             {domestic && calc && calc.tax_mode && (
               <p className="text-sm text-fg-secondary">{s.taxMode[calc.tax_mode] ?? calc.tax_mode}</p>

@@ -15,6 +15,7 @@ import BuyerDetail from '@/pages/BuyerDetail';
 import Buyers from '@/pages/Buyers';
 import Pipeline from '@/pages/Pipeline';
 import ProductDetail from '@/pages/ProductDetail';
+import QuoteTemplate from '@/pages/QuoteTemplate';
 import ProductEdit from '@/pages/ProductEdit';
 import Followups from '@/pages/Followups';
 import Products from '@/pages/Products';
@@ -61,6 +62,7 @@ export const router = createBrowserRouter([
               { path: '/', element: <Today /> },
               { path: '/quotes', element: <Quotes /> },
               { path: '/quotations', element: <Navigate to="/quotes" replace /> },
+              { path: '/quotes/template', element: <QuoteTemplate /> },
               { path: '/quotes/new', element: <QuoteForm /> },
               { path: '/quotes/:id/edit', element: <QuoteForm /> },
               { path: '/quotes/:id', element: <QuoteDetail /> },

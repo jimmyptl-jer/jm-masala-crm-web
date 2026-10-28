@@ -155,4 +155,15 @@ export const quoteForm = {
   completeItems: (n: number) => (n === 1 ? 'Complete 1 item to continue' : `Complete ${n} items to continue`),
   checkBuyer: 'Buyer selected', checkPortDischarge: 'Port of discharge', checkPortLoading: 'Port of loading', checkProduct: 'At least 1 product', checkTerms: 'Terms selected',
   totalQty: (q: string, unit: string) => `${q} ${unit}`,
+  // product line editor
+  grade: 'Grade',
+  productLine: 'Product line', standardGrade: 'Standard grade', archivedWord: 'archived',
+  duplicate: 'Duplicate', duplicateAria: (n: number) => `Duplicate product ${n}`,
+  gradeFirst: 'Choose a product first',
+  specPurity: 'Purity', specMoisture: 'Moisture',
+  selectedSpecs: 'Selected grade specifications', noGradeSpecs: 'No purity, moisture or cleaning recorded for this grade.',
+  specsToggle: 'Specifications', noSpecText: 'No specification text recorded for this grade.',
+  specsSnapshotNote: 'Copied onto the quotation when it is issued; later catalogue changes do not alter an issued quotation.',
+  noCostYet: 'No cost entered for this line. Enter the purchase cost to see the margin.',
+  linesFooter: (n: number) => `${n} line ${n === 1 ? 'item' : 'items'} · Amount excludes separately specified charges`,
 };

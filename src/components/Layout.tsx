@@ -93,7 +93,7 @@ export function Layout() {
   ];
   /** Entries that lead somewhere (the greyed "soon" ones are left out of search and the phone menu). */
   const live = groups.flatMap((g) => g.items).filter((i) => !i.soon);
-  const pages = useMemo(() => [...live.map((i) => ({ label: i.label, to: i.to })), ...(isAdmin ? [{ label: n.settings, to: '/settings' }] : [])],
+  const pages = useMemo(() => [...live.map((i) => ({ label: i.label, to: i.to })), ...(isAdmin ? [{ label: n.settings, to: '/settings' }] : []), { label: n.quoteTemplate, to: '/quotes/template' }],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [isAdmin]);
 

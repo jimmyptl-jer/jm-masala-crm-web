@@ -64,4 +64,12 @@ export const quotes = {
   filteredEmptyHint: 'Try another status, period or search.',
   clearAllFilters: 'Clear filters',
   countryNote: 'Country filter works on up to 500 quotations.',
+  // template preview
+  tplTitle: 'Quotation template', tplSubtitle: 'Push data into the quotation and see it render.',
+  tplHelp: 'The quotation is a template: it takes one data object (company, buyer, lines, totals, terms, bank) and draws the page. Edit the JSON on the left.',
+  tplBack: 'Back to quotations',
+  tplDataLabel: 'Template data (JSON)', tplPreviewLabel: 'Quotation preview',
+  tplReset: 'Reset to sample', previewDownload: 'Download PDF',
+  tplBadJson: 'This is not valid JSON', tplNotObject: 'The data must be a JSON object.',
+  tplMissing: (key: string, kind: string) => `"${key}" is missing or is not ${kind === 'array' ? 'a list' : kind === 'object' ? 'an object' : 'text'}.`,
 };

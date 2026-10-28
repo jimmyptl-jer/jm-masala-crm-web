@@ -59,7 +59,7 @@ export const nav = {
   palettePages: 'Pages', paletteBuyers: 'Buyers', paletteQuotes: 'Quotations', paletteNone: 'Nothing found',
   roleOwner: 'Owner', roleSales: 'Sales',
   proforma: 'Proforma invoices', samples: 'Samples', shipments: 'Shipments', payments: 'Payments',
-  soon: 'Soon', soonHint: 'Coming soon',
+  soon: 'Soon', soonHint: 'Coming soon', quoteTemplate: 'Quotation template',
 };
 
 export const buyerForm = {

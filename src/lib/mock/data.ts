@@ -37,7 +37,10 @@ const product = (id: string, name: string, hs: string, rateUsd: string): Product
 });
 
 export const PRODUCTS: Product[] = [
-  product('p1', 'Cumin Seeds', '090931', '2850.00'),
+  // sample grades of Cumin Seeds (illustrative values for the demo; real specifications come from the saved grade records)
+  { ...product('p1', 'Cumin Seeds', '090931', '2850.00'), grade: 'Singapore 99', purity: '99% min', moisture: '8% max', cleaning: 'Machine Clean', packing_options: ['25 kg PP Bag', '50 kg PP Bag'], specification: 'Cleaning: Machine Clean\nPurity: 99% min\nMoisture: 8% max' },
+  { ...product('p1b', 'Cumin Seeds', '090931', '2900.00'), grade: 'Eagle+', purity: '98% min', moisture: '8% max', cleaning: 'Sortex Clean', packing_options: ['25 kg PP Bag', '50 kg PP Bag'], specification: 'Cleaning: Sortex Clean\nPurity: 98% min\nMoisture: 8% max' },
+  { ...product('p1c', 'Cumin Seeds', '090931', '2750.00'), grade: 'Europe Quality', purity: '98% min', moisture: '8% max', cleaning: 'Machine Clean', packing_options: ['25 kg PP Bag'], specification: 'Cleaning: Machine Clean\nPurity: 98% min\nMoisture: 8% max' },
   product('p2', 'Coriander Seeds', '090921', '1150.00'),
   product('p3', 'Fennel Seeds', '090961', '1900.00'),
   product('p4', 'Fenugreek Seeds', '091099', '1650.00'),
