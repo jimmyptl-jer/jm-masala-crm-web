@@ -14,23 +14,26 @@
  * Unsaved-changes guard: useUnsavedChanges(dirty). Money is held and sent as decimal strings; the API does
  * all calculation.
  */
+import clsx from 'clsx';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye, EyeOff, Lock, Plus } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Lock, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Button, Card, ErrorNote, Input, NumberInput, PageHeader, Segmented, Select, Sheet, Spinner, Textarea, errorMessage, useToast } from '@/components/ui';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Button, Card, ErrorNote, Input, NumberInput, Segmented, Select, Sheet, Spinner, StatusBadge, Textarea, errorMessage, useToast } from '@/components/ui';
 import { SearchSelect, type Option } from '@/components/SearchSelect';
 import { BuyerForm } from '@/components/BuyerForm';
 import { LineCard } from '@/components/quoteform/LineCard';
 import { IssueSheet } from '@/components/quoteform/IssueSheet';
 import { TotalsBar } from '@/components/quoteform/TotalsBar';
+import { QuotePreview } from '@/components/quoteform/QuotePreview';
+import { SummaryPanel, type CheckItem } from '@/components/quoteform/SummaryPanel';
 import type { SendChoice } from '@/components/quote/SendPicker';
 import {
   EXPORT_CURRENCIES, INCOTERMS, OTHER, SHIPPING_KEYS, buildCalcInput, buildSaveBody, buyerDefaults, chargesApply, emptyForm,
   formFromRevision, isOtherPayment, mapServerFields, newLine, shippingComplete, validateForm, type FormState, type LineState,
 } from '@/components/quoteform/model';
 import { ApiError, api } from '@/lib/api';
-import { money } from '@/lib/format';
+import { money, qty } from '@/lib/format';
 import { useBuyers, useDebounced, useProducts, useSendChannels, useSettings, useUnsavedChanges } from '@/lib/hooks';
 import type { Buyer, CalcResult, Currency, Incoterm, Product, QuoteDetail, QuoteType, SendResult } from '@/lib/types';
 import { isApprovedProduct } from '@/lib/products';
@@ -58,15 +61,20 @@ export default function QuoteFormPage() {
  *   A child that needs the full row gets the class `md:col-span-2`.
  * @param props.children - the fields; they are stacked with a small gap (12 px).
  */
-function Section({ title, action, columns, children }: { title: string; action?: ReactNode; columns?: boolean; children: ReactNode }) {
+function Section({ id, n, active, onActive, title, action, columns, children }: { id?: string; n?: number; active?: boolean; onActive?: () => void; title: string; action?: ReactNode; columns?: boolean; children: ReactNode }) {
   return (
-    <Card className="p-4 md:p-5">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="font-serif text-xl font-semibold text-forest-900 md:text-2xl">{title}</h2>
-        {action}
-      </div>
-      <div className={columns ? 'grid gap-3 md:grid-cols-2 md:gap-x-4' : 'space-y-3'}>{children}</div>
-    </Card>
+    <div id={id} className="scroll-mt-24" onFocusCapture={onActive} onPointerDownCapture={onActive}>
+      <Card className="p-4 md:p-5">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2.5 text-[17px] font-bold leading-6 text-ink">
+            {n !== undefined && <span className={clsx('grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-bold', active ? 'bg-paprika text-white' : 'bg-surface-muted text-ink-secondary')} aria-hidden>{n}</span>}
+            {title}
+          </h2>
+          {action}
+        </div>
+        <div className={columns ? 'grid gap-3 md:grid-cols-2 md:gap-x-4' : 'space-y-3'}>{children}</div>
+      </Card>
+    </div>
   );
 }
 
@@ -177,6 +185,17 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
 
   // ask before leaving with unsaved edits (in-app navigation to another path, and tab close/refresh)
   useUnsavedChanges(dirty, t.common.unsavedChanges);
+  // preview sheet, and autosave bookkeeping: `autosaving` while a silent save runs, `autoFailed` after one failed
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [activeSec, setActiveSec] = useState(1);
+  const [autosaving, setAutosaving] = useState(false);
+  const [autoFailed, setAutoFailed] = useState(false);
+  // always points at the latest autosave function (assigned after `persist` below), so the 10 s timer never uses stale form data
+  const autosaveRef = useRef<() => Promise<void>>(async () => undefined);
+  useEffect(() => {
+    const timer = setInterval(() => { void autosaveRef.current(); }, 10_000);
+    return () => clearInterval(timer);
+  }, []);
 
   /**
    * Effect: performs the navigation requested through `setGoto(url)` and replaces the history entry (so Back
@@ -458,9 +477,10 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
    * that draft instead of creating a duplicate quote.
    * Failures go to `handleError`.
    */
-  const persist = async (): Promise<string | null> => {
+  const persist = async (silent = false): Promise<string | null> => {
     const local = validateForm(form);
     if (Object.keys(local).length) {
+      if (silent) return null;
       showErrors(local);
       toast(s.fixHighlighted, 'error');
       return null;
@@ -478,9 +498,23 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
       setFormError(null);
       return saved.id;
     } catch (e) {
-      handleError(e, sentIdx);
+      if (!silent) handleError(e, sentIdx);
       return null;
     }
+  };
+
+  /**
+   * Autosave (every 10 s while there are unsaved edits): saves the draft quietly with the same call as Save draft.
+   * Skips while another save runs, when nothing changed, or when the form is not complete enough to save yet
+   * (no errors are shown and no toast). A failed request only turns the "Saved" indicator into a warning.
+   */
+  autosaveRef.current = async () => {
+    if (busyRef.current || !dirty || Object.keys(validateForm(form)).length) return;
+    setAutosaving(true);
+    const id = await persist(true);
+    setAutosaving(false);
+    setAutoFailed(id === null);
+    if (id) void qc.invalidateQueries({ queryKey: ['quotes'] });
   };
 
   /**
@@ -614,14 +648,39 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
   });
   // printed number of the quote being revised (e.g. QT/26-27/0042-R1), shown as the page subtitle
   const revNumber = detail?.number ?? detail?.quote_no ?? null;
+  // save indicator, shared by the top bar and the summary panel
+  const saveState = busy === 'save' || autosaving ? 'saving' : autoFailed && dirty ? 'failed' : dirty ? 'unsaved' : (quoteId ?? createdId.current) ? 'saved' : 'new';
+  const saveText = { saved: s.savedState, saving: s.savingState, unsaved: s.unsavedState, failed: s.autosaveFailed, new: s.notSavedYet }[saveState];
+  // checklist of what is missing before the quote can be finalised, and the "14 MT . 2 items" line under the total
+  const doneLines = form.lines.filter((l) => !!l.product_id && !!l.quantity && !!l.rate);
+  const portOk = needDischarge ? !!form.port_discharge.trim() : !!form.port_loading.trim();
+  const checklist: CheckItem[] = [
+    { label: s.checkBuyer, ok: !!form.buyer_id },
+    ...(domestic ? [] : [{ label: needDischarge ? s.checkPortDischarge : s.checkPortLoading, ok: portOk }]),
+    { label: s.checkProduct, ok: doneLines.length > 0 },
+    { label: s.checkTerms, ok: !!form.payment_terms.trim() },
+  ];
+  const lineUnits = [...new Set(doneLines.map((l) => productMap.get(l.product_id)?.unit))];
+  // total quantity: an exact sum of the typed quantities in thousandths (a quantity, not money); only when every line has the same unit
+  const milli = (v: string) => { const [whole = '0', frac = ''] = v.split('.'); return BigInt(whole + `${frac}000`.slice(0, 3)); };
+  const qtySum = doneLines.reduce((acc, l) => acc + milli(l.quantity), BigInt(0));
+  const qtyLine = doneLines.length === 0 ? '' : `${lineUnits.length === 1 && lineUnits[0] ? `${qty(`${qtySum / BigInt(1000)}.${(qtySum % BigInt(1000)).toString().padStart(3, '0')}`)} ${lineUnits[0]} · ` : ''}${doneLines.length === 1 ? '1 item' : `${doneLines.length} items`}`;
 
   return (
-    <div className="mx-auto max-w-5xl pb-56 md:pb-44">
-      <PageHeader
-        title={quoteId ? s.editTitle : s.newTitle}
-        subtitle={quoteId && revNumber ? s.revisingSubtitle(revNumber) : undefined}
-      />
+    <div className="mx-auto max-w-7xl pb-56 md:pb-10">
+      {/* top bar: back, title, status, lifecycle stepper */}
+      <div className="glass-panel mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+        <Link to="/quotes" aria-label={s.back} title={s.back} className="tap grid place-items-center rounded-lg text-fg-secondary hover:bg-brand-50"><ArrowLeft className="h-5 w-5" /></Link>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold leading-8 tracking-tight text-ink">{quoteId ? s.editTitle : s.newTitle}</h1>
+          {quoteId && revNumber && <p className="text-sm text-fg-muted">{s.revisingSubtitle(revNumber)}</p>}
+        </div>
+        <StatusBadge status={detail?.status ?? 'draft'} />
+        <span className={clsx('ml-auto text-sm', saveState === 'failed' ? 'text-danger-ink' : 'text-ink-muted')} role="status">{saveText}</span>
+      </div>
       {formError && <div className="mb-4"><ErrorNote error={formError} /></div>}
+
+      <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start xl:gap-5">
 
       {/* Enter key must not submit: saving/issuing happens only through the TotalsBar buttons; noValidate
          because we validate in code */}
@@ -630,15 +689,15 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
         <fieldset disabled={busy !== null} className="min-w-0 space-y-3">
           {/* 1. Buyer */}
           {/* Buyer: locked (read-only) after first issue, otherwise a searchable picker with quick-add */}
-          <Section title={s.buyerSection}>
+          <Section id="step-buyer" n={1} active={activeSec === 1} onActive={() => setActiveSec(1)} title={s.secBuyer}>
             {locked ? (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 rounded-lg bg-cream-100 px-3 py-2 text-base font-semibold text-forest-900">
                   <Lock className="h-4 w-4 shrink-0" aria-hidden />
                   <span className="min-w-0 truncate">{detail?.buyer.company_name}</span>
-                  <span className="ml-auto text-sm font-normal text-ink/60">{t.common.type[form.type]}</span>
+                  <span className="ml-auto text-sm font-normal text-fg-muted">{t.common.type[form.type]}</span>
                 </div>
-                <p className="text-sm text-ink/70">{s.buyerLockedNote}</p>
+                <p className="text-sm text-fg-secondary">{s.buyerLockedNote}</p>
               </div>
             ) : (
               <SearchSelect
@@ -649,9 +708,11 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
             )}
           </Section>
 
-          {/* 2. Terms */}
+          {/* 2. Shipment */}
           <Section
-            title={s.termsSection}
+            id="step-terms"
+            n={2} active={activeSec === 2} onActive={() => setActiveSec(2)}
+            title={s.secShipment}
             columns
             action={form.buyer_id ? (
               <Button variant="ghost" className="-mr-2" onClick={() => setTermsOpen((o) => !o)} aria-expanded={termsOpen}>
@@ -676,10 +737,10 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
                       <Select label={s.currency} value={form.currency} error={errors.currency} onChange={(e) => upd({ currency: e.target.value as Currency })}>
                         {EXPORT_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
                       </Select>
-                      <Select label={s.incoterm} value={form.incoterm} error={errors.incoterm} onChange={(e) => upd({ incoterm: e.target.value as Incoterm | '' })}>
-                        <option value="">{s.incotermChoose}</option>
-                        {INCOTERMS.map((c) => <option key={c} value={c}>{s.incotermNames[c] ?? c}</option>)}
-                      </Select>
+                      <div>
+                        <Segmented<Incoterm | ''> label={s.incoterm} value={form.incoterm} onChange={(v) => upd({ incoterm: v })} options={INCOTERMS.map((x) => ({ value: x, label: x }))} />
+                        {errors.incoterm && <p role="alert" className="mt-1 text-xs text-danger-ink">{errors.incoterm}</p>}
+                      </div>
                     </div>
                     <datalist id="loading-ports">{s.loadingPorts.map((p) => <option key={p} value={p} />)}</datalist>
                     <Input label={loadingLabel} optional={needDischarge || !form.incoterm} list="loading-ports" value={form.port_loading} error={errors.port_loading}
@@ -719,7 +780,9 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
 
           {/* 3. Products */}
           <Section
-            title={s.productsSection}
+            id="step-products"
+            n={3} active={activeSec === 3} onActive={() => setActiveSec(3)}
+            title={s.secProducts}
             action={(
               <Button variant="ghost" className="-mr-2" onClick={() => setShowCost((v) => !v)} aria-pressed={showCost}>
                 {showCost ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
@@ -737,10 +800,10 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
                 onProduct={(pid) => changeProduct(l.uid, pid)} onRemove={() => removeLine(l.uid)}
               />
             ))}
-            <Button variant="secondary" className="w-full" onClick={addLine}><Plus className="h-5 w-5" aria-hidden />{s.addProduct}</Button>
+            <button type="button" onClick={addLine} className="inline-flex items-center gap-1 text-sm font-bold text-paprika hover:text-paprika-700"><Plus className="h-4 w-4" aria-hidden />{s.addProduct}</button>
 
             {domestic && calc && calc.tax_mode && (
-              <p className="text-sm text-ink/70">{s.taxMode[calc.tax_mode] ?? calc.tax_mode}</p>
+              <p className="text-sm text-fg-secondary">{s.taxMode[calc.tax_mode] ?? calc.tax_mode}</p>
             )}
             {calc?.warnings?.map((w) => <p key={w} role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{w}</p>)}
             {showCost && calc && (
@@ -759,7 +822,7 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
           </Section>
 
           {/* 4. Charges */}
-          <Section title={s.chargesSection}>
+          <Section n={4} active={activeSec === 4} onActive={() => setActiveSec(4)} title={s.secPayment}>
             {showCharges && (
               <div className="grid grid-cols-2 gap-3">
                 <NumberInput label={s.freight(currency)} optional decimals={2} value={form.freight} error={errors.freight} onChange={(v) => upd({ freight: v })} />
@@ -767,21 +830,33 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
               </div>
             )}
             <NumberInput label={s.discount(currency)} optional decimals={2} value={form.discount} error={errors.discount} onChange={(v) => upd({ discount: v })} />
-          </Section>
-
-          {/* 5. Notes */}
-          <Section title={s.notesSection}>
+          
             <Textarea label={s.notes} optional hint={s.notesHint} value={form.notes} maxLength={2000} error={errors.notes} onChange={(e) => upd({ notes: e.target.value })} />
           </Section>
         </fieldset>
       </form>
 
+        {/* summary: beside the form on wide screens (sticky), under it on phones */}
+        <aside className="mt-4 xl:sticky xl:top-4 xl:mt-0">
+          <SummaryPanel
+            calc={calc} currency={currency} type={form.type} pending={calcPending} calcError={calcError} hasInput={!!calcInput}
+            qtyLine={qtyLine} checklist={checklist} showMargin={showCost} busy={busy} saveState={saveState}
+            onFinalise={onIssue} onPreview={() => setPreviewOpen(true)} onSave={() => void onSave()}
+          />
+        </aside>
+      </div>
+
       {/* 6. Fixed totals bar */}
       {/* totals and buttons are fixed to the bottom of the viewport: see TotalsBar */}
-      <TotalsBar
+      <div className="md:hidden"><TotalsBar
         calc={calc} currency={currency} type={form.type} pending={calcPending} calcError={calcError} hasInput={!!calcInput}
         busy={busy} onSave={() => void onSave()} onIssue={onIssue}
-      />
+      /></div>
+
+      {/* Preview PDF: the quotation document on the letterhead */}
+      <Sheet huge open={previewOpen} onClose={() => setPreviewOpen(false)} title={s.previewSheetTitle}>
+        <QuotePreview settings={settingsQ.data} buyer={buyer} form={form} products={productMap} calc={calc} currency={currency} number={revNumber} lineAmount={(uid) => calcLineFor(uid)?.amount} />
+      </Sheet>
 
       {/* Issue sheet: confirm, and choose Email / WhatsApp / don't send */}
       <IssueSheet open={issueOpen} onClose={() => setIssueOpen(false)} buyer={buyer} busy={busy === 'issue'} onConfirm={(c, n) => void issueAndSend(c, n)} />

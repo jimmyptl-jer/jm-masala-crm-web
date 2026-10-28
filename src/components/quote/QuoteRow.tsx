@@ -52,11 +52,11 @@ export function QuoteRow({ q }: { q: QuoteListRow }) {
         </div>
         <StatusBadge status={q.status} />
       </div>
-      <div className="mt-1 truncate text-sm text-ink/65">{q.products || t.quotes.noProducts}</div>
+      <div className="mt-1 truncate text-sm text-fg-muted">{q.products || t.quotes.noProducts}</div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <span className="text-base font-semibold tabular-nums text-forest-900">{money(q.grand_total, q.currency)}</span>
         {open && q.next_followup && (
-          <span className={clsx('text-sm', overdue ? 'font-semibold text-red-700' : 'text-ink/65')}>
+          <span className={clsx('text-sm', overdue ? 'font-semibold text-red-700' : 'text-fg-muted')}>
             {overdue ? t.quotes.followupOverdue(date(q.next_followup)) : t.quotes.followup(date(q.next_followup))}
           </span>
         )}

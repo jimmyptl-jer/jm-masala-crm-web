@@ -75,7 +75,7 @@ export function RecipientsStep({ form, set }: { form: CampaignInput; set: (p: Pa
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <h2 className="mb-3 font-serif text-xl font-semibold text-forest-900 md:text-2xl">{m.recipientsHeading}</h2>
+        <h2 className="mb-3 text-[17px] font-bold leading-6 text-ink">{m.recipientsHeading}</h2>
         <div className="grid gap-2 md:grid-cols-3" role="radiogroup" aria-label={m.recipientsHeading}>
           {MODES.map((x) => (
             <button
@@ -83,7 +83,7 @@ export function RecipientsStep({ form, set }: { form: CampaignInput; set: (p: Pa
               className={clsx('rounded-lg border px-3 py-2 text-left', a.mode === x.key ? 'border-forest-700 bg-forest-50 ring-2 ring-forest-700/30' : 'border-forest-900/20 bg-white hover:bg-forest-50')}
             >
               <span className="block font-semibold text-forest-900">{x.label}</span>
-              <span className="block text-sm text-ink/60">{x.hint}</span>
+              <span className="block text-sm text-fg-muted">{x.hint}</span>
             </button>
           ))}
         </div>
@@ -139,7 +139,7 @@ export function RecipientsStep({ form, set }: { form: CampaignInput; set: (p: Pa
           <div className="mt-4">
             <Input label={m.pickBuyersFind} type="search" value={find} onChange={(e) => setFind(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} autoComplete="off" />
             <div className="mt-2 flex flex-wrap items-center gap-3">
-              <span className="text-sm text-ink/60">{m.productsSelected(a.buyer_ids.length)}</span>
+              <span className="text-sm text-fg-muted">{m.productsSelected(a.buyer_ids.length)}</span>
               <Button variant="secondary" onClick={() => setA({ buyer_ids: [...new Set([...a.buyer_ids, ...pickable.filter((b) => b.email && !b.marketing_opt_out).map((b) => b.id)])] })}>{m.selectAllShown}</Button>
               {a.buyer_ids.length > 0 && <button type="button" onClick={() => setA({ buyer_ids: [] })} className="tap text-sm font-medium text-forest-800 underline">{c.productsClear}</button>}
             </div>
@@ -166,14 +166,14 @@ export function RecipientsStep({ form, set }: { form: CampaignInput; set: (p: Pa
         <p aria-live="polite" className={clsx('text-lg font-semibold', p && p.count === 0 ? 'text-red-700' : 'text-forest-900')}>
           {p ? m.willReceive(p.count) : <Spinner />}
         </p>
-        {left.length > 0 && <p className="mt-1 text-sm text-ink/70">{m.leftOut} {left.join(' · ')}.</p>}
+        {left.length > 0 && <p className="mt-1 text-sm text-fg-secondary">{m.leftOut} {left.join(' · ')}.</p>}
         {p && p.count === 0 && <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{m.noRecipients}</p>}
         {p && p.buyers.length > 0 && (
           <>
             <h3 className="mb-1 mt-3 text-sm font-medium text-forest-900">{m.recipientList}{p.count > p.buyers.length ? ` (${m.showingFirst(p.buyers.length)})` : ''}</h3>
             <ul className="grid max-h-64 overflow-y-auto rounded-lg border border-cream-200 md:grid-cols-2">
               {p.buyers.map((b) => (
-                <li key={b.id} className="truncate px-3 py-1.5 text-sm text-ink/80">{b.company_name} <span className="text-ink/50">{b.email}</span></li>
+                <li key={b.id} className="truncate px-3 py-1.5 text-sm text-fg-secondary">{b.company_name} <span className="text-fg-muted">{b.email}</span></li>
               ))}
             </ul>
           </>

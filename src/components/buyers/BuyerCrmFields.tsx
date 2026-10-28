@@ -47,7 +47,7 @@ export function BuyerCrmFields({ f, set, errors }: {
   return (
     <div className="space-y-5">
       <section className="space-y-3">
-        <h3 className="font-serif text-lg font-semibold text-forest-900">{c.secPipeline}</h3>
+        <h3 className="text-[17px] font-bold leading-6 text-ink">{c.secPipeline}</h3>
         <Select label={c.stage} value={f.stage ?? 'new_lead'} onChange={(e) => set('stage', e.target.value as Stage)} error={errors.stage}>
           {STAGES.map((s) => <option key={s} value={s}>{c.stages[s]}</option>)}
         </Select>
@@ -59,7 +59,7 @@ export function BuyerCrmFields({ f, set, errors }: {
       </section>
 
       <section className="space-y-3">
-        <h3 className="font-serif text-lg font-semibold text-forest-900">{c.secSource}</h3>
+        <h3 className="text-[17px] font-bold leading-6 text-ink">{c.secSource}</h3>
         <div className="grid gap-3 sm:grid-cols-2">
           <Select label={c.channel} optional value={f.channel ?? ''} onChange={(e) => set('channel', (e.target.value || null) as Channel | null)} error={errors.channel}>
             <option value="">{c.chooseOne}</option>
@@ -73,16 +73,16 @@ export function BuyerCrmFields({ f, set, errors }: {
       </section>
 
       <section className="space-y-3">
-        <h3 className="font-serif text-lg font-semibold text-forest-900">{c.secInterest}</h3>
+        <h3 className="text-[17px] font-bold leading-6 text-ink">{c.secInterest}</h3>
         <fieldset>
           <legend className="mb-1 flex w-full items-center justify-between gap-2 text-sm font-medium text-forest-900">
             <span>{c.interestedProducts}</span>
-            <span className="font-normal text-ink/60">{c.productsSelected(chosen.length)}</span>
+            <span className="font-normal text-fg-muted">{c.productsSelected(chosen.length)}</span>
           </legend>
-          <p className="mb-2 text-sm text-ink/60">{c.productsHint}</p>
+          <p className="mb-2 text-sm text-fg-muted">{c.productsHint}</p>
           <Input label={c.productsFind} type="search" value={find} onChange={(e) => setFind(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} autoComplete="off" />
           <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-forest-900/20 bg-white p-1">
-            {shown.length === 0 ? <p className="p-3 text-sm text-ink/60">{c.productsNone}</p> : (
+            {shown.length === 0 ? <p className="p-3 text-sm text-fg-muted">{c.productsNone}</p> : (
               <ul className="grid sm:grid-cols-2">
                 {shown.map((n) => (
                   <li key={n}>
@@ -103,7 +103,7 @@ export function BuyerCrmFields({ f, set, errors }: {
       </section>
 
       <section className="space-y-3">
-        <h3 className="font-serif text-lg font-semibold text-forest-900">{c.secFollowup}</h3>
+        <h3 className="text-[17px] font-bold leading-6 text-ink">{c.secFollowup}</h3>
         <div className="grid gap-3 sm:grid-cols-2">
           <Input label={c.nextAction} optional value={text('next_action')} onChange={(e) => set('next_action', e.target.value)} hint={c.nextActionHint} error={errors.next_action} />
           <Input label={c.nextFollowup} optional type="date" value={text('next_followup')} onChange={(e) => set('next_followup', e.target.value || null)} error={errors.next_followup} />
@@ -114,12 +114,12 @@ export function BuyerCrmFields({ f, set, errors }: {
         </div>
         <label className="tap flex items-start gap-3 text-base text-forest-900">
           <input type="checkbox" className="mt-1 h-5 w-5 accent-forest-700" checked={!!f.marketing_opt_out} onChange={(e) => set('marketing_opt_out', e.target.checked)} />
-          <span>{c.optOut}<span className="block text-sm text-ink/60">{c.optOutHint}</span></span>
+          <span>{c.optOut}<span className="block text-sm text-fg-muted">{c.optOutHint}</span></span>
         </label>
       </section>
 
       <section className="space-y-3">
-        <h3 className="font-serif text-lg font-semibold text-forest-900">{c.secProfile}</h3>
+        <h3 className="text-[17px] font-bold leading-6 text-ink">{c.secProfile}</h3>
         <div className="grid gap-3 sm:grid-cols-2">
           <Select label={c.businessType} optional value={f.business_type ?? ''} onChange={(e) => set('business_type', (e.target.value || null) as BusinessType | null)}>
             <option value="">{c.chooseOne}</option>

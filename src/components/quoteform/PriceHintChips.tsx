@@ -57,7 +57,7 @@ export function PriceHintChips({ productId, buyerId, currency, onPick }:
   if (!chips.length) return null;
   return (
     <div>
-      <div className="mb-1 text-xs text-ink/60">{s.hintsHeading}</div>
+      <div className="mb-1 text-xs text-fg-muted">{s.hintsHeading}</div>
       <div className="flex flex-wrap gap-2">
         {chips.map((c) => (
           <button

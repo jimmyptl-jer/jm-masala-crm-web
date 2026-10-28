@@ -25,7 +25,7 @@ function Stat({ label, value, tone }: { label: string; value: number | string; t
   return (
     <div className="card p-3">
       <div className={`text-3xl font-bold tabular-nums ${tone ?? 'text-forest-900'}`}>{value}</div>
-      <div className="text-sm text-ink/70">{label}</div>
+      <div className="text-sm text-fg-secondary">{label}</div>
     </div>
   );
 }
@@ -71,11 +71,11 @@ export default function CampaignDetail() {
       <div>
         {back}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h1 className="min-w-0 break-words font-serif text-2xl font-semibold leading-tight text-forest-900 md:text-3xl">{c.name}</h1>
+          <h1 className="min-w-0 break-words text-2xl font-bold leading-8 tracking-tight text-ink">{c.name}</h1>
           <StatusPill status={c.status} />
         </div>
-        <p className="mt-1 text-base text-ink/70">{readable(c.subject)}</p>
-        {c.started_at && <p className="text-sm text-ink/60">{dateTime(c.started_at)}</p>}
+        <p className="mt-1 text-base text-fg-secondary">{readable(c.subject)}</p>
+        {c.started_at && <p className="text-sm text-fg-muted">{dateTime(c.started_at)}</p>}
       </div>
 
       {c.status === 'sending' && (
@@ -94,11 +94,11 @@ export default function CampaignDetail() {
       </section>
 
       <Card className="p-4">
-        <h2 className="font-serif text-xl font-semibold text-forest-900 md:text-2xl">{m.reportQuotes}: {attribution.quotes_created}</h2>
-        <p className="mb-2 text-sm text-ink/60">{m.reportQuotesHint}</p>
+        <h2 className="text-[17px] font-bold leading-6 text-ink">{m.reportQuotes}: {attribution.quotes_created}</h2>
+        <p className="mb-2 text-sm text-fg-muted">{m.reportQuotesHint}</p>
         {attribution.by_currency.length > 0 && (
           <table className="text-left text-base">
-            <thead><tr className="text-sm text-ink/60"><th className="pr-6 font-normal" /><th className="pr-6 font-normal">{m.reportQuoted}</th><th className="font-normal">{m.reportWon}</th></tr></thead>
+            <thead><tr className="text-sm text-fg-muted"><th className="pr-6 font-normal" /><th className="pr-6 font-normal">{m.reportQuoted}</th><th className="font-normal">{m.reportWon}</th></tr></thead>
             <tbody>
               {attribution.by_currency.map((x) => (
                 <tr key={x.currency} className="border-t border-cream-200">
@@ -113,18 +113,18 @@ export default function CampaignDetail() {
       </Card>
 
       <Card className="p-4">
-        <h2 className="font-serif text-xl font-semibold text-forest-900 md:text-2xl">{m.reportRecipients}</h2>
-        <p className="mb-2 text-sm text-ink/60">{m.reportReplyHint}</p>
+        <h2 className="text-[17px] font-bold leading-6 text-ink">{m.reportRecipients}</h2>
+        <p className="mb-2 text-sm text-fg-muted">{m.reportReplyHint}</p>
         <ul className="divide-y divide-cream-200">
           {r.recipients.map((x) => (
             <li key={x.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2">
               <div className="min-w-0 flex-1 basis-56">
                 <Link to={`/buyers/${x.buyer_id}`} className="break-words font-semibold text-forest-900 underline-offset-2 hover:underline">{x.company_name}</Link>
-                <div className="truncate text-sm text-ink/60">{x.email}</div>
+                <div className="truncate text-sm text-fg-muted">{x.email}</div>
               </div>
               <div className="flex items-center gap-2">
                 <StatusPill status={x.status} recipient />
-                {x.sent_at && <span className="text-xs text-ink/60">{dateTime(x.sent_at)}</span>}
+                {x.sent_at && <span className="text-xs text-fg-muted">{dateTime(x.sent_at)}</span>}
               </div>
               {x.error && <p className="basis-full text-sm text-red-700">{x.error}</p>}
               <label className="tap flex items-center gap-2 text-sm text-forest-900">

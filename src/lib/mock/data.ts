@@ -16,7 +16,12 @@ export const USERS: UserRow[] = [{ id: 'u1', full_name: 'Demo User', role: 'admi
 export const TEAM: TeamMember[] = [{ id: 'u1', full_name: 'Demo User' }];
 
 export const SETTINGS: Settings = {
-  company: { name: 'JM Masala Trading LLP', address: '', phone: '', email: '', iec: '', gstin: '', state: '', state_code: '' },
+  company: {
+    name: 'JM Masala Trading LLP', letterhead_name: 'JM MASALA TRADING LLP', address: 'A-18, APMC Market Yard, Unjha, Mehsana District, Gujarat – 384170, India',
+    phone: '+91 91067 66041 / +91 98245 10478', email: 'jmmasalaexports@gmail.com', website: 'jmmasalaexports.com',
+    iec: 'ATVPP8901F', gstin: '24ATVPP8901F1ZA', fssai: '10724998000373', cres: 'CRES/SBCB/22721/2024-2025', rcmc: 'RCMC/APEDA/12788/2024-2025',
+    state: 'Gujarat', state_code: '24', signatory_name: 'ManojKumar K Patel', signatory_title: 'Authorised Signatory',
+  },
   bank: { bank_name: '', branch: '', account_no: '', ifsc: '', swift: '', ad_code: '' },
   export_terms: ['Sample term: prices are indicative.'],
   domestic_terms: ['Sample term: prices are indicative.'],
@@ -50,17 +55,17 @@ const buyer = (id: string, type: QuoteType, company: string, city: string, place
   business_type: 'importer', designation: null, website: null, linkedin: null, registration_details: null,
   channel: 'direct', lead_source: null, source_detail: null, first_inquiry_date: day(-30), lead_cost: null,
   stage: 'new_lead', qualified: false, lost_reason: null, interested_products: [], requirements: null,
-  next_action: null, next_followup: null, assigned_to: 'u1', marketing_opt_out: false, opted_out_at: null,
+  next_action: null, next_followup: null, assigned_to: null, marketing_opt_out: false, opted_out_at: null,
   ...place,
 });
 
 export const BUYERS: Buyer[] = [
-  buyer('b1', 'export', 'Sample Foods GmbH', 'Hamburg', { country: 'Germany', stage: 'quotation_sent', qualified: true }),
-  buyer('b2', 'export', 'Demo Spice Importers LLC', 'Dubai', { country: 'UAE', stage: 'negotiation', qualified: true, next_followup: day(0) }),
+  buyer('b1', 'export', 'Sample Foods GmbH', 'Hamburg', { country: 'Germany', stage: 'quotation_sent', qualified: true, interested_products: ['Cumin Seeds'], last_contact_at: iso(-16), phone: '+49 40 1234 5678' }),
+  buyer('b2', 'export', 'Demo Spice Importers LLC', 'Dubai', { country: 'UAE', stage: 'negotiation', qualified: true, next_followup: day(0), next_action: 'Send revised price', interested_products: ['Cumin Seeds', 'Fennel Seeds'], last_contact_at: iso(-5), whatsapp: '+971 50 123 4567' }),
   buyer('b3', 'export', 'Example Trading Co', 'Rotterdam', { country: 'Netherlands', stage: 'won', qualified: true }),
   buyer('b4', 'export', 'Sample Wholesale Ltd', 'London', { country: 'United Kingdom', stage: 'lost', lost_reason: 'price' }),
-  buyer('b5', 'domestic', 'Demo Masala Traders', 'Mumbai', { state: 'Maharashtra', state_code: '27', business_type: 'distributor', stage: 'quotation_sent', qualified: true }),
-  buyer('b6', 'domestic', 'Sample Kirana Mart', 'Ahmedabad', { state: 'Gujarat', state_code: '24', business_type: 'retailer' }),
+  buyer('b5', 'domestic', 'Demo Masala Traders', 'Mumbai', { state: 'Maharashtra', state_code: '27', business_type: 'distributor', stage: 'quotation_sent', qualified: true, next_followup: day(-2), next_action: 'Chase quote reply', interested_products: ['Coriander Seeds'], last_contact_at: iso(-12), phone: '+91 98765 43210' }),
+  buyer('b6', 'domestic', 'Sample Kirana Mart', 'Ahmedabad', { state: 'Gujarat', state_code: '24', business_type: 'retailer', first_inquiry_date: day(-2), interested_products: ['Turmeric'], phone: '+91 91234 56789' }),
 ];
 
 interface Seed { id: string; no: string | null; buyer: string; type: QuoteType; status: QuoteStatus; currency: Currency; ageDays: number;

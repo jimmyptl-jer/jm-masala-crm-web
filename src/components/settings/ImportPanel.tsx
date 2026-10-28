@@ -159,7 +159,7 @@ export function ImportPanel() {
 
   return (
     <div className="space-y-3">
-      <p className="text-base text-ink/80">{s.importIntro}</p>
+      <p className="text-base text-fg-secondary">{s.importIntro}</p>
 
       <Segmented<Entity> label={s.importStep1} value={entity} onChange={changeEntity} disabled={!!busy}
         options={[{ value: 'buyers', label: s.entityBuyers }, { value: 'products', label: s.entityProducts }]} />
@@ -177,8 +177,8 @@ export function ImportPanel() {
         <Button variant="secondary" className="w-full" disabled={!!busy} onClick={() => fileRef.current?.click()}>
           <FileSpreadsheet className="h-5 w-5" aria-hidden />{file ? s.changeFile : s.chooseFile}
         </Button>
-        {file && <p className="mt-1 break-all text-sm text-ink/70">{file.name}</p>}
-        <p className="mt-1 text-xs text-ink/60">{s.fileHint}</p>
+        {file && <p className="mt-1 break-all text-sm text-fg-secondary">{file.name}</p>}
+        <p className="mt-1 text-xs text-fg-muted">{s.fileHint}</p>
       </div>
 
       {busy === 'check' && <p role="status" className="text-base text-forest-800">{s.checking}</p>}
@@ -196,7 +196,7 @@ export function ImportPanel() {
           {errCount > 0 && (
             <div>
               <h4 className="font-semibold text-forest-900">{s.errorsTitle}</h4>
-              <p className="text-sm text-ink/70">{s.errorsHelp}</p>
+              <p className="text-sm text-fg-secondary">{s.errorsHelp}</p>
               <ul className="mt-2 max-h-72 divide-y divide-red-100 overflow-y-auto rounded-lg border border-red-200 bg-red-50">
                 {report.errors.map((e, i) => (
                   <li key={i} className="px-3 py-2 text-sm text-red-900">

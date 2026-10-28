@@ -137,7 +137,7 @@ export function Section({ title, open, onToggle, children }: { title: string; op
     <Card>
       <h2>
         <button type="button" aria-expanded={open} onClick={onToggle} className="tap flex w-full items-center justify-between gap-3 px-4 py-3 text-left">
-          <span className="font-serif text-xl font-semibold md:text-2xl text-forest-900">{title}</span>
+          <span className="text-[17px] font-bold leading-6 text-ink">{title}</span>
           <ChevronDown className={`h-6 w-6 shrink-0 text-forest-800 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden />
         </button>
       </h2>
@@ -155,7 +155,7 @@ export function Section({ title, open, onToggle, children }: { title: string; op
  */
 export function SaveBar({ busy, fatal, label }: { busy: boolean; fatal: unknown; label?: string }) {
   return (
-    <div className="sticky bottom-[4.5rem] z-10 -mx-4 mt-4 space-y-2 border-t border-cream-200 bg-white/95 px-4 py-3 md:bottom-0">
+    <div className="sticky bottom-[4.5rem] z-10 -mx-4 mt-4 space-y-2 border-t border-cream-200 bg-surface px-4 py-3 md:bottom-0">
       {fatal !== null && <ErrorNote error={fatal} />}
       <Button type="submit" className="w-full" loading={busy}>{busy ? t.common.saving : label ?? t.settings.save}</Button>
     </div>

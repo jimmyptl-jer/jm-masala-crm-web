@@ -65,16 +65,16 @@ export function ReviewStep({ form, id, version, onSent }: { form: CampaignInput;
       {p && (
         <>
           <Card className="p-4">
-            <h2 className="mb-2 font-serif text-xl font-semibold text-forest-900 md:text-2xl">{m.reviewSummary}</h2>
+            <h2 className="mb-2 text-[17px] font-bold leading-6 text-ink">{m.reviewSummary}</h2>
             <dl className="grid gap-x-6 gap-y-2 text-base sm:grid-cols-[8rem_1fr]">
-              <dt className="text-ink/60">{m.from}</dt><dd>{me?.full_name} · JM Masala Trading LLP</dd>
-              <dt className="text-ink/60">{m.subject}</dt><dd className="font-semibold text-forest-900">{p.subject}</dd>
-              <dt className="text-ink/60">{m.to}</dt><dd className="font-semibold text-forest-900">{m.willReceive(count)}</dd>
-              <dt className="text-ink/60">{m.attachments}</dt>
+              <dt className="text-fg-muted">{m.from}</dt><dd>{me?.full_name} · JM Masala Trading LLP</dd>
+              <dt className="text-fg-muted">{m.subject}</dt><dd className="font-semibold text-forest-900">{p.subject}</dd>
+              <dt className="text-fg-muted">{m.to}</dt><dd className="font-semibold text-forest-900">{m.willReceive(count)}</dd>
+              <dt className="text-fg-muted">{m.attachments}</dt>
               <dd>{p.files.length === 0 ? m.none : p.files.map((f) => `${f.name} (${fileSize(f.size)})`).join(', ')}</dd>
             </dl>
             {count > 0 && p.recipients.matched > count && (
-              <p className="mt-2 text-sm text-ink/70">
+              <p className="mt-2 text-sm text-fg-secondary">
                 {[p.recipients.excluded.opted_out && m.excludedOptedOut(p.recipients.excluded.opted_out), p.recipients.excluded.no_email && m.excludedNoEmail(p.recipients.excluded.no_email),
                   p.recipients.excluded.invalid_email && m.excludedInvalid(p.recipients.excluded.invalid_email), p.recipients.excluded.duplicate_email && m.excludedDuplicate(p.recipients.excluded.duplicate_email)]
                   .filter(Boolean).join(' · ')}
@@ -96,8 +96,8 @@ export function ReviewStep({ form, id, version, onSent }: { form: CampaignInput;
           </Card>
 
           <Card className="space-y-2 p-4">
-            <h2 className="font-serif text-xl font-semibold text-forest-900 md:text-2xl">{m.testHeading}</h2>
-            <p className="text-sm text-ink/60">{m.testHint}</p>
+            <h2 className="text-[17px] font-bold leading-6 text-ink">{m.testHeading}</h2>
+            <p className="text-sm text-fg-muted">{m.testHint}</p>
             <div className="flex flex-wrap items-end gap-2">
               <Input wrapperClassName="min-w-[14rem] flex-1" label={m.testLabel} type="email" inputMode="email" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
               <Button variant="secondary" loading={test.isPending} disabled={!channels.email || !testTo.trim()} onClick={() => test.mutate()}>{m.testSend}</Button>
@@ -110,7 +110,7 @@ export function ReviewStep({ form, id, version, onSent }: { form: CampaignInput;
               <input type="checkbox" className="mt-1 h-5 w-5 accent-forest-700" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
               {m.confirmCheck}
             </label>
-            {!isAdmin && <p className="text-sm text-ink/60">{m.adminOnly}</p>}
+            {!isAdmin && <p className="text-sm text-fg-muted">{m.adminOnly}</p>}
             <Button className="w-full md:w-auto" disabled={!canSend} loading={send.isPending} onClick={() => send.mutate()}>
               {send.isPending ? m.sending : m.sendButton(count)}
             </Button>

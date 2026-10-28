@@ -145,7 +145,7 @@ export function ShareSheet({ open, onClose, quoteId, revision, number, buyer, on
   return (
     <Sheet open={open} onClose={onClose} title={d.shareTitle}>
       <div className="space-y-3">
-        <p className="text-sm text-ink/70">{d.shareHint}</p>
+        <p className="text-sm text-fg-secondary">{d.shareHint}</p>
 
         {link.isLoading && <Spinner label={d.shareLinkLoading} />}
         {link.isError && <ErrorNote error={link.error} onRetry={() => void link.refetch()} />}
@@ -158,7 +158,7 @@ export function ShareSheet({ open, onClose, quoteId, revision, number, buyer, on
                 readOnly value={url} aria-label={d.shareLink} onFocus={(e) => e.currentTarget.select()}
                 className="min-h-tap w-full rounded-lg border border-forest-900/25 bg-white px-3 py-2 text-sm text-ink"
               />
-              <p className="mt-1 text-sm text-ink/60">{d.shareValid(valid)}</p>
+              <p className="mt-1 text-sm text-fg-muted">{d.shareValid(valid)}</p>
             </div>
 
             {/* Send straight from the app (only channels the server is set up for) */}
@@ -174,7 +174,7 @@ export function ShareSheet({ open, onClose, quoteId, revision, number, buyer, on
                 <Button className="w-full" loading={send.isPending} disabled={choice === 'none'} onClick={() => send.mutate()}>
                   {choice === 'email' ? t.send.sendButtonEmail : t.send.sendButtonWhatsapp}
                 </Button>
-                <p className="text-sm text-ink/60">{t.send.sendOrManual}</p>
+                <p className="text-sm text-fg-muted">{t.send.sendOrManual}</p>
               </div>
             )}
 
@@ -191,7 +191,7 @@ export function ShareSheet({ open, onClose, quoteId, revision, number, buyer, on
                 <Mail className="h-4 w-4" aria-hidden />{d.shareEmail}
               </ExternalButton>
             </div>
-            {!hasWa && <p className="text-sm text-ink/60">{d.shareNoWhatsapp}</p>}
+            {!hasWa && <p className="text-sm text-fg-muted">{d.shareNoWhatsapp}</p>}
 
             {shared && (
               <div className="rounded-lg bg-gold-100 p-3">

@@ -24,8 +24,8 @@ const nf = t.buyers.notSet;
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <dt className="text-sm text-ink/60">{label}</dt>
-      <dd className="whitespace-pre-line break-words text-base text-ink">{children || <span className="text-ink/40">{nf}</span>}</dd>
+      <dt className="text-sm text-fg-muted">{label}</dt>
+      <dd className="whitespace-pre-line break-words text-base text-ink">{children || <span className="text-fg-muted">{nf}</span>}</dd>
     </div>
   );
 }
@@ -72,10 +72,10 @@ export function BuyerPipelineCard({ b }: { b: BuyerDetail }) {
   return (
     <>
       <Card className="p-4">
-        <h2 className="mb-3 font-serif text-xl font-semibold md:text-2xl text-forest-900">{c.pipelineTitle}</h2>
+        <h2 className="mb-3 text-[17px] font-bold leading-6 text-ink">{c.pipelineTitle}</h2>
         <div className="flex flex-wrap items-center gap-2">
           <StagePill stage={b.stage} />
-          <span className="text-sm text-ink/70">{c.groups[stageGroup(b.stage)]}</span>
+          <span className="text-sm text-fg-secondary">{c.groups[stageGroup(b.stage)]}</span>
           {b.qualified && <span className="inline-block rounded-full bg-forest-50 px-2.5 py-0.5 text-xs font-semibold text-forest-800">{c.qualifiedBadge}</span>}
         </div>
         {b.stage === 'lost' && b.lost_reason && <p className="mt-2 text-base text-red-800">{b.lost_reason}</p>}
@@ -120,16 +120,16 @@ export function BuyerPipelineCard({ b }: { b: BuyerDetail }) {
       </Card>
 
       <Card className="p-4">
-        <h2 className="mb-3 font-serif text-xl font-semibold md:text-2xl text-forest-900">{c.secPerformance}</h2>
-        {p.quotes_issued === 0 ? <p className="text-base text-ink/60">{c.perfNone}</p> : (
+        <h2 className="mb-3 text-[17px] font-bold leading-6 text-ink">{c.secPerformance}</h2>
+        {p.quotes_issued === 0 ? <p className="text-base text-fg-muted">{c.perfNone}</p> : (
           <>
             <dl className="grid grid-cols-3 gap-3 text-center">
-              <div><dd className="text-2xl font-semibold tabular-nums text-forest-900">{p.quotes_issued}</dd><dt className="text-sm text-ink/60">{c.perfQuotes}</dt></div>
-              <div><dd className="text-2xl font-semibold tabular-nums text-emerald-800">{p.won}</dd><dt className="text-sm text-ink/60">{c.perfWon}</dt></div>
-              <div><dd className="text-2xl font-semibold tabular-nums text-red-800">{p.lost}</dd><dt className="text-sm text-ink/60">{c.perfLost}</dt></div>
+              <div><dd className="text-2xl font-semibold tabular-nums text-forest-900">{p.quotes_issued}</dd><dt className="text-sm text-fg-muted">{c.perfQuotes}</dt></div>
+              <div><dd className="text-2xl font-semibold tabular-nums text-emerald-800">{p.won}</dd><dt className="text-sm text-fg-muted">{c.perfWon}</dt></div>
+              <div><dd className="text-2xl font-semibold tabular-nums text-red-800">{p.lost}</dd><dt className="text-sm text-fg-muted">{c.perfLost}</dt></div>
             </dl>
             <table className="mt-4 w-full text-left text-base">
-              <thead><tr className="text-sm text-ink/60"><th className="py-1 font-normal" />
+              <thead><tr className="text-sm text-fg-muted"><th className="py-1 font-normal" />
                 <th className="py-1 text-right font-normal">{c.perfQuoted}</th><th className="py-1 text-right font-normal">{c.perfRevenue}</th></tr></thead>
               <tbody>
                 {p.by_currency.map((r) => (

@@ -97,7 +97,7 @@ function DuplicateForm({ onClose, quote }: { onClose: () => void; quote: QuoteDe
       }
     >
       <div className="space-y-3">
-        <p className="text-sm text-ink/70">{d.duplicateHint}</p>
+        <p className="text-sm text-fg-secondary">{d.duplicateHint}</p>
         <Segmented
           value={mode} onChange={(v) => { setMode(v); setErr(''); }} disabled={create.isPending}
           options={[{ value: 'same', label: d.duplicateSame }, { value: 'other', label: d.duplicateOther }]}

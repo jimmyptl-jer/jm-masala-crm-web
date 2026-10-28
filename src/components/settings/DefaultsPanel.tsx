@@ -53,7 +53,7 @@ export function DefaultsPanel({ settings }: { settings: Settings }) {
 
   return (
     <form onSubmit={submit} className="space-y-3" noValidate>
-      <p className="text-sm text-ink/70">{s.defaultsHelp}</p>
+      <p className="text-sm text-fg-secondary">{s.defaultsHelp}</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <NumberInput label={s.validityDays} decimals={0} value={validity} onChange={setValidity} error={errors.validity_days} />
         <NumberInput label={s.followupDays} decimals={0} value={followup} onChange={setFollowup} error={errors.followup_days} />

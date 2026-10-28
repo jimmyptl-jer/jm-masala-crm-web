@@ -136,7 +136,7 @@ export function LineCard({ index, line, product, productOptions, currency, type,
       <div className="flex items-baseline justify-between gap-3 rounded-lg bg-forest-50 px-3 py-2">
         <div className="text-sm text-forest-900">
           {s.lineAmount}
-          {type === 'domestic' && calcLine && <span className="ml-2 text-ink/60">{s.lineGst(qty(calcLine.gst_rate) || '0')}</span>}
+          {type === 'domestic' && calcLine && <span className="ml-2 text-fg-muted">{s.lineGst(qty(calcLine.gst_rate) || '0')}</span>}
         </div>
         <div className="text-lg font-bold tabular-nums text-forest-900" aria-live="polite">{calcLine ? money(calcLine.amount, currency) : '—'}</div>
       </div>

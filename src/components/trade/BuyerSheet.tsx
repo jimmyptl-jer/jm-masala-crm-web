@@ -54,13 +54,13 @@ export function BuyerSheet({ id, onClose }: { id: string | null; onClose: () => 
           <div className="flex items-start gap-3">
             <GradeBadge grade={d.grade} score={d.score} />
             <div className="min-w-0 flex-1">
-              <div className="text-base text-ink/80">{[d.company.country, m.roles[d.company.role]].filter(Boolean).join(' · ')}</div>
-              <div className="text-sm text-ink/60">{m.statuses[d.company.status]} · {d.company.source}</div>
+              <div className="text-base text-fg-secondary">{[d.company.country, m.roles[d.company.role]].filter(Boolean).join(' · ')}</div>
+              <div className="text-sm text-fg-muted">{m.statuses[d.company.status]} · {d.company.source}</div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {d.company.email && <a className="tap inline-flex items-center gap-1 rounded-lg border border-forest-900/25 px-3 text-sm font-semibold text-forest-900" href={`mailto:${d.company.email}`}><Mail className="h-4 w-4" aria-hidden />{d.company.email}</a>}
                 {d.company.phone && <a className="tap inline-flex items-center gap-1 rounded-lg border border-forest-900/25 px-3 text-sm font-semibold text-forest-900" href={`tel:${d.company.phone.replace(/[^\d+]/g, '')}`}><Phone className="h-4 w-4" aria-hidden />{d.company.phone}</a>}
                 {d.company.website && <a className="tap inline-flex items-center gap-1 rounded-lg border border-forest-900/25 px-3 text-sm font-semibold text-forest-900" href={/^https?:/i.test(d.company.website) ? d.company.website : `https://${d.company.website}`} target="_blank" rel="noopener noreferrer"><Globe className="h-4 w-4" aria-hidden />{d.company.website}</a>}
-                {d.company.contact_name && <span className="inline-flex min-h-[44px] items-center text-sm text-ink/80">{d.company.contact_name}</span>}
+                {d.company.contact_name && <span className="inline-flex min-h-[44px] items-center text-sm text-fg-secondary">{d.company.contact_name}</span>}
               </div>
             </div>
           </div>
@@ -78,17 +78,17 @@ export function BuyerSheet({ id, onClose }: { id: string | null; onClose: () => 
 
           {d.grade !== '-' && (
             <section>
-              <h3 className="mb-1 font-serif text-lg font-semibold text-forest-900">{m.scoreHeading}</h3>
+              <h3 className="mb-1 text-[17px] font-bold leading-6 text-ink">{m.scoreHeading}</h3>
               <ul className="space-y-1">
                 {(Object.keys(d.parts) as (keyof typeof d.parts)[]).map((k) => (
                   <li key={k} className="grid grid-cols-[minmax(8rem,12rem)_1fr_3.5rem] items-center gap-3 text-sm">
                     <span>{m.scoreParts[k]}</span>
                     <span className="h-3 overflow-hidden rounded bg-cream-100"><span className="block h-full rounded bg-forest-700" style={{ width: `${(d.parts[k] / m.scoreMax[k]) * 100}%` }} /></span>
-                    <span className="text-right tabular-nums text-ink/70">{d.parts[k]} / {m.scoreMax[k]}</span>
+                    <span className="text-right tabular-nums text-fg-secondary">{d.parts[k]} / {m.scoreMax[k]}</span>
                   </li>
                 ))}
               </ul>
-              <p className="mt-1 text-sm text-ink/60">{m.scoreNote}</p>
+              <p className="mt-1 text-sm text-fg-muted">{m.scoreNote}</p>
             </section>
           )}
 
@@ -99,7 +99,7 @@ export function BuyerSheet({ id, onClose }: { id: string | null; onClose: () => 
 
           {d.monthly.length > 0 && (
             <section>
-              <h3 className="mb-1 font-serif text-lg font-semibold text-forest-900">{m.monthlyHeading}</h3>
+              <h3 className="mb-1 text-[17px] font-bold leading-6 text-ink">{m.monthlyHeading}</h3>
               <div className="flex h-24 items-end gap-1" role="img" aria-label={m.monthlyHeading}>
                 {d.monthly.map((x) => (
                   <div key={x.month} className="flex-1" title={`${x.month}: ${m.kg(x.qty_kg)}`}>
@@ -107,25 +107,25 @@ export function BuyerSheet({ id, onClose }: { id: string | null; onClose: () => 
                   </div>
                 ))}
               </div>
-              <div className="mt-1 flex justify-between text-xs text-ink/50"><span>{d.monthly[0]!.month}</span><span>{d.monthly.at(-1)!.month}</span></div>
+              <div className="mt-1 flex justify-between text-xs text-fg-muted"><span>{d.monthly[0]!.month}</span><span>{d.monthly.at(-1)!.month}</span></div>
             </section>
           )}
 
           <div className="grid gap-5 md:grid-cols-2">
             {d.suppliers.length > 0 && (
               <section>
-                <h3 className="font-serif text-lg font-semibold text-forest-900">{m.suppliersHeading}</h3>
-                <p className="mb-1 text-sm text-ink/60">{m.suppliersHint}</p>
+                <h3 className="text-[17px] font-bold leading-6 text-ink">{m.suppliersHeading}</h3>
+                <p className="mb-1 text-sm text-fg-muted">{m.suppliersHint}</p>
                 <ul className="divide-y divide-cream-200">
-                  {d.suppliers.slice(0, 8).map((s) => <li key={s.name} className="flex items-baseline justify-between gap-3 py-1.5 text-sm"><span className="min-w-0 break-words">{s.name}</span><span className="shrink-0 text-ink/70">{m.ship(s.shipments)} · {m.kg(s.qty_kg)}</span></li>)}
+                  {d.suppliers.slice(0, 8).map((s) => <li key={s.name} className="flex items-baseline justify-between gap-3 py-1.5 text-sm"><span className="min-w-0 break-words">{s.name}</span><span className="shrink-0 text-fg-secondary">{m.ship(s.shipments)} · {m.kg(s.qty_kg)}</span></li>)}
                 </ul>
               </section>
             )}
             {d.origins.length > 0 && (
               <section>
-                <h3 className="mb-1 font-serif text-lg font-semibold text-forest-900">{m.originsHeading}</h3>
+                <h3 className="mb-1 text-[17px] font-bold leading-6 text-ink">{m.originsHeading}</h3>
                 <ul className="divide-y divide-cream-200">
-                  {d.origins.slice(0, 8).map((s) => <li key={s.name} className="flex items-baseline justify-between gap-3 py-1.5 text-sm"><span>{s.name}</span><span className="text-ink/70">{m.ship(s.shipments)} · {m.kg(s.qty_kg)}</span></li>)}
+                  {d.origins.slice(0, 8).map((s) => <li key={s.name} className="flex items-baseline justify-between gap-3 py-1.5 text-sm"><span>{s.name}</span><span className="text-fg-secondary">{m.ship(s.shipments)} · {m.kg(s.qty_kg)}</span></li>)}
                 </ul>
               </section>
             )}
@@ -133,11 +133,11 @@ export function BuyerSheet({ id, onClose }: { id: string | null; onClose: () => 
 
           {d.shipments.length > 0 && (
             <section>
-              <h3 className="font-serif text-lg font-semibold text-forest-900">{m.shipmentsHeading}</h3>
-              <p className="mb-1 text-sm text-ink/60">{m.shownOf(d.shipments.length)}</p>
+              <h3 className="text-[17px] font-bold leading-6 text-ink">{m.shipmentsHeading}</h3>
+              <p className="mb-1 text-sm text-fg-muted">{m.shownOf(d.shipments.length)}</p>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[640px] text-left text-sm">
-                  <thead><tr className="border-b border-cream-200 text-ink/60"><th className="py-1.5 pr-2 font-medium">{m.colDate}</th><th className="px-2 font-medium">{m.colProduct}</th><th className="px-2 text-right font-medium">{m.colQty}</th><th className="px-2 font-medium">{m.colOrigin}</th><th className="px-2 font-medium">{m.colSupplier}</th></tr></thead>
+                  <thead><tr className="border-b border-cream-200 text-fg-muted"><th className="py-1.5 pr-2 font-medium">{m.colDate}</th><th className="px-2 font-medium">{m.colProduct}</th><th className="px-2 text-right font-medium">{m.colQty}</th><th className="px-2 font-medium">{m.colOrigin}</th><th className="px-2 font-medium">{m.colSupplier}</th></tr></thead>
                   <tbody>
                     {d.shipments.map((s) => (
                       <tr key={s.id} className="border-b border-cream-200 last:border-0">

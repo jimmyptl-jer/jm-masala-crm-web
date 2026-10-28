@@ -237,29 +237,29 @@ function Detail({ quote }: { quote: QuoteDetailT }) {
       {/* header */}
       <Card className="p-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <h1 className="min-w-0 break-words font-serif text-2xl font-semibold leading-tight md:text-3xl text-forest-900">{label}</h1>
+          <h1 className="min-w-0 break-words text-2xl font-bold leading-8 tracking-tight text-ink">{label}</h1>
           <StatusBadge status={quote.status} />
         </div>
         <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-base md:grid-cols-4">
           <div>
-            <dt className="text-xs uppercase tracking-wide text-ink/55">{d.buyer}</dt>
+            <dt className="text-xs uppercase tracking-wide text-fg-muted">{d.buyer}</dt>
             <dd><Link to={`/buyers/${quote.buyer_id}`} className="font-semibold text-forest-800 underline">{quote.buyer.company_name}</Link></dd>
           </div>
           {quote.status === 'lost' && quote.lost_reason && (
             <div className="col-span-2">
-              <dt className="text-xs uppercase tracking-wide text-ink/55">{d.lostBecause}</dt>
+              <dt className="text-xs uppercase tracking-wide text-fg-muted">{d.lostBecause}</dt>
               <dd className="text-red-800">{lostText(quote.lost_reason)}</dd>
             </div>
           )}
           {quote.valid_until && (
             <div>
-              <dt className="text-xs uppercase tracking-wide text-ink/55">{d.validUntil}</dt>
+              <dt className="text-xs uppercase tracking-wide text-fg-muted">{d.validUntil}</dt>
               <dd>{date(quote.valid_until)}</dd>
             </div>
           )}
           {open && (
             <div>
-              <dt className="text-xs uppercase tracking-wide text-ink/55">{d.nextFollowup}</dt>
+              <dt className="text-xs uppercase tracking-wide text-fg-muted">{d.nextFollowup}</dt>
               <dd className="flex flex-wrap items-center gap-x-2">
                 <span className={clsx(overdue && 'font-semibold text-red-700')}>
                   {quote.next_followup ? date(quote.next_followup) : d.noFollowup}{overdue && ` (${d.followupOverdue})`}
@@ -270,7 +270,7 @@ function Detail({ quote }: { quote: QuoteDetailT }) {
               </dd>
             </div>
           )}
-          {quote.created_by_name && <p className="col-span-full text-sm text-ink/60">{d.createdBy(quote.created_by_name)}</p>}
+          {quote.created_by_name && <p className="col-span-full text-sm text-fg-muted">{d.createdBy(quote.created_by_name)}</p>}
         </dl>
         {quote.warnings && quote.warnings.length > 0 && (
           <div role="status" className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
@@ -284,8 +284,8 @@ function Detail({ quote }: { quote: QuoteDetailT }) {
       {neverIssued && (
         <Card className="space-y-3 border-gold-500 p-4">
           <div>
-            <h2 className="font-serif text-xl font-semibold md:text-2xl text-forest-900">{d.draftTitle}</h2>
-            <p className="text-base text-ink/70">{d.draftHint}</p>
+            <h2 className="text-[17px] font-bold leading-6 text-ink">{d.draftTitle}</h2>
+            <p className="text-base text-fg-secondary">{d.draftHint}</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <RouterButton to={`/quotes/${quote.id}/edit`}><Pencil className="h-4 w-4" aria-hidden />{d.editDraft}</RouterButton>
@@ -373,7 +373,7 @@ function Detail({ quote }: { quote: QuoteDetailT }) {
           </div>
         }
       >
-        <p className="text-base text-ink/80">{d.deleteHint}</p>
+        <p className="text-base text-fg-secondary">{d.deleteHint}</p>
       </Sheet>
     </div>
   );

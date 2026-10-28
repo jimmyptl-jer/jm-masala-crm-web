@@ -18,7 +18,7 @@ const m = t.ti;
 
 /** Change in value with an arrow, green up / red down; a dash when unknown. */
 function Growth({ v }: { v: number | null }) {
-  if (v === null) return <span className="text-ink/40">—</span>;
+  if (v === null) return <span className="text-fg-muted">—</span>;
   const up = v >= 0;
   return (
     <span className={clsx('inline-flex items-center gap-1 tabular-nums', up ? 'text-emerald-700' : 'text-red-700')}>
@@ -63,8 +63,8 @@ export function MarketsTab({ onFindBuyers, onGoData }: { onFindBuyers: (country:
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <h2 className="font-serif text-xl font-semibold text-forest-900 md:text-2xl">{m.marketsHeading}</h2>
-        <p className="mb-3 text-sm text-ink/60">{m.marketsHint}</p>
+        <h2 className="text-[17px] font-bold leading-6 text-ink">{m.marketsHeading}</h2>
+        <p className="mb-3 text-sm text-fg-muted">{m.marketsHint}</p>
         <fieldset>
           <legend className="mb-1 text-sm font-medium text-forest-900">{m.products}</legend>
           <div className="flex flex-wrap gap-2">
@@ -85,27 +85,27 @@ export function MarketsTab({ onFindBuyers, onGoData }: { onFindBuyers: (country:
         )}
       </Card>
 
-      {(picked ?? []).length === 0 && <p className="text-base text-ink/70">{m.products}</p>}
+      {(picked ?? []).length === 0 && <p className="text-base text-fg-secondary">{m.products}</p>}
       {report.isPending && (picked ?? []).length > 0 && <Spinner />}
       {report.isError && <ErrorNote error={report.error} onRetry={() => void report.refetch()} />}
 
       {r && r.latest_year && total && (
         <>
           <section className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label={m.marketsHeading}>
-            <div className="card p-3"><div className="text-sm text-ink/70">{m.kpiValue} · {r.latest_year}</div><div className="text-2xl font-bold tabular-nums text-forest-900">{m.usd(total.value)}</div></div>
-            <div className="card p-3"><div className="text-sm text-ink/70">{m.kpiQty} · {r.latest_year}</div><div className="text-2xl font-bold tabular-nums text-forest-900">{m.kg(total.qty)}</div></div>
-            <div className="card p-3"><div className="text-sm text-ink/70">{m.kpiPrice}</div><div className="text-2xl font-bold tabular-nums text-forest-900">{total.qty > 0 ? m.perMt(Math.round((total.value / total.qty) * 1000)) : '—'}</div></div>
-            <div className="card p-3"><div className="text-sm text-ink/70">{m.kpiCountries}</div><div className="text-2xl font-bold tabular-nums text-forest-900">{r.countries.length}</div></div>
+            <div className="card p-3"><div className="text-sm text-fg-secondary">{m.kpiValue} · {r.latest_year}</div><div className="text-2xl font-bold tabular-nums text-forest-900">{m.usd(total.value)}</div></div>
+            <div className="card p-3"><div className="text-sm text-fg-secondary">{m.kpiQty} · {r.latest_year}</div><div className="text-2xl font-bold tabular-nums text-forest-900">{m.kg(total.qty)}</div></div>
+            <div className="card p-3"><div className="text-sm text-fg-secondary">{m.kpiPrice}</div><div className="text-2xl font-bold tabular-nums text-forest-900">{total.qty > 0 ? m.perMt(Math.round((total.value / total.qty) * 1000)) : '—'}</div></div>
+            <div className="card p-3"><div className="text-sm text-fg-secondary">{m.kpiCountries}</div><div className="text-2xl font-bold tabular-nums text-forest-900">{r.countries.length}</div></div>
           </section>
 
           <Card className="p-4">
-            <h2 className="mb-2 font-serif text-xl font-semibold text-forest-900 md:text-2xl">{m.topCountries} <span className="text-base font-normal text-ink/60">({r.latest_year})</span></h2>
+            <h2 className="mb-2 text-[17px] font-bold leading-6 text-ink">{m.topCountries} <span className="text-base font-normal text-fg-muted">({r.latest_year})</span></h2>
             <ul className="space-y-1.5">
               {r.countries.slice(0, 12).map((c) => (
                 <li key={c.country} className="grid grid-cols-[minmax(7rem,12rem)_1fr_auto] items-center gap-3">
                   <span className="truncate text-sm font-medium text-forest-900">{c.country}</span>
                   <span className="h-5 overflow-hidden rounded bg-cream-100"><span className="block h-full rounded bg-forest-700" style={{ width: `${Math.max(2, (c.latest_value / max) * 100)}%` }} /></span>
-                  <span className="w-28 text-right text-sm tabular-nums text-ink/80">{m.usd(c.latest_value)}</span>
+                  <span className="w-28 text-right text-sm tabular-nums text-fg-secondary">{m.usd(c.latest_value)}</span>
                 </li>
               ))}
             </ul>
@@ -115,7 +115,7 @@ export function MarketsTab({ onFindBuyers, onGoData }: { onFindBuyers: (country:
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead>
-                  <tr className="border-b border-cream-200 text-ink/60">
+                  <tr className="border-b border-cream-200 text-fg-muted">
                     <th className="py-2 pr-3 font-medium">{m.colCountry}</th>
                     <th className="px-2 py-2 text-right font-medium">{m.colValue}</th>
                     <th className="px-2 py-2 text-right font-medium">{m.colQty}</th>
@@ -135,14 +135,14 @@ export function MarketsTab({ onFindBuyers, onGoData }: { onFindBuyers: (country:
                       <td className="px-2 py-2 text-right tabular-nums">{c.unit_price_mt ? c.unit_price_mt.toLocaleString('en-US') : '—'}</td>
                       <td className="px-2 py-2 text-right tabular-nums">{c.share}%</td>
                       <td className="px-2 py-2 text-right"><Growth v={c.growth} /></td>
-                      {r.years.slice(-4, -1).map((y) => <td key={y} className="px-2 py-2 text-right tabular-nums text-ink/70">{c.years[String(y)] ? m.usd(c.years[String(y)]!.value) : '—'}</td>)}
+                      {r.years.slice(-4, -1).map((y) => <td key={y} className="px-2 py-2 text-right tabular-nums text-fg-secondary">{c.years[String(y)] ? m.usd(c.years[String(y)]!.value) : '—'}</td>)}
                       <td className="py-2 pl-2 text-right"><button type="button" onClick={() => onFindBuyers(c.country)} className="tap whitespace-nowrap font-semibold text-forest-800 underline">{m.findBuyers}</button></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-sm text-ink/60">{m.marketNote}</p>
+            <p className="mt-2 text-sm text-fg-muted">{m.marketNote}</p>
           </Card>
         </>
       )}

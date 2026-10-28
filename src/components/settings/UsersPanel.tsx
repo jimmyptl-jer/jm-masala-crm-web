@@ -70,7 +70,7 @@ function UserEditor({ user, onClose }: { user: UserRow; onClose: () => void }) {
 
   return (
     <form onSubmit={submit} className="space-y-3" noValidate>
-      <p className="text-base text-ink/70">{user.email ?? s.noEmail}</p>
+      <p className="text-base text-fg-secondary">{user.email ?? s.noEmail}</p>
       <Input label={s.fullName} hint={s.fullNameHint} value={name} onChange={(e) => setName(e.target.value)} error={errors.full_name} autoComplete="off" />
       <Input label={s.userPhone} optional type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} error={errors.phone} autoComplete="off" />
       {failure && <ErrorNote error={failure} />}
@@ -99,7 +99,7 @@ export function UsersPanel() {
 
   return (
     <div className="space-y-3">
-      <p className="rounded-lg bg-cream-100 p-3 text-sm text-ink/80">{s.usersNote}</p>
+      <p className="rounded-lg bg-cream-100 p-3 text-sm text-fg-secondary">{s.usersNote}</p>
       {query.isPending ? <Spinner /> : query.isError ? <ErrorNote error={query.error} onRetry={() => void query.refetch()} /> : query.data.length === 0 ? (
         <EmptyState title={s.usersEmpty} />
       ) : (
@@ -111,7 +111,7 @@ export function UsersPanel() {
                   <span className="break-words text-base font-semibold text-forest-900">{u.full_name}</span>
                   <span className={clsx('inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold', u.role === 'admin' ? 'bg-gold-100 text-wood-800' : 'bg-forest-100 text-forest-900')}>{roleLabel(u.role)}</span>
                 </div>
-                <div className="truncate text-sm text-ink/60">{u.email ?? s.noEmail}</div>
+                <div className="truncate text-sm text-fg-muted">{u.email ?? s.noEmail}</div>
               </div>
               <Button variant="secondary" aria-label={s.editAria(u.full_name)} onClick={() => setEditing(u)}><Pencil className="h-4 w-4" aria-hidden />{t.common.edit}</Button>
             </li>

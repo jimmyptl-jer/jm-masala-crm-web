@@ -11,7 +11,20 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   // Enables the React plugin: JSX/TSX compilation and fast refresh (live reload of components) in dev.
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Restarts the dev server when tailwind.config.js changes. Tailwind only reads its config at start-up, so without
+    // this a running `npm run dev` keeps the old colours and new classes such as bg-brand produce no style at all
+    // (for example white button text on a cream page).
+    {
+      name: 'restart-on-tailwind-config',
+      configureServer(server) {
+        const file = path.resolve(import.meta.dirname, 'tailwind.config.js');
+        server.watcher.add(file);
+        server.watcher.on('change', (changed) => { if (path.resolve(changed) === file) void server.restart(); });
+      },
+    },
+  ],
   // Makes the import prefix '@/' point at src/, so code can write import { api } from '@/lib/api'.
   // tsconfig.json has the matching `paths` entry so TypeScript understands it too. import.meta.dirname is
   // this folder (needs Node 20.11+).

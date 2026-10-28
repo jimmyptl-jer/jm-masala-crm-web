@@ -57,8 +57,8 @@ function ContactButton({ href, icon, label, missing, external }: { href: string 
 function Fact({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
-      <dt className="text-sm text-ink/60">{label}</dt>
-      <dd className="whitespace-pre-line break-words text-base text-ink">{value || <span className="text-ink/40">{s.notSet}</span>}</dd>
+      <dt className="text-sm text-fg-muted">{label}</dt>
+      <dd className="whitespace-pre-line break-words text-base text-ink">{value || <span className="text-fg-muted">{s.notSet}</span>}</dd>
     </div>
   );
 }
@@ -82,7 +82,7 @@ function QuoteRow({ q }: { q: QuoteListRow }) {
             <span className="font-semibold text-forest-900">{q.quote_no ?? s.draftLabel}</span>
             <StatusBadge status={q.status} />
           </div>
-          <div className="truncate text-sm text-ink/70">{[q.products, date(q.activity_at)].filter(Boolean).join(' · ')}</div>
+          <div className="truncate text-sm text-fg-secondary">{[q.products, date(q.activity_at)].filter(Boolean).join(' · ')}</div>
         </div>
         <div className="shrink-0 text-right text-base font-semibold tabular-nums text-forest-900">{money(q.grand_total, q.currency)}</div>
         <ChevronRight className="h-5 w-5 shrink-0 text-forest-800" aria-hidden />
@@ -171,13 +171,13 @@ export default function BuyerDetail() {
       <div>
         {back}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h1 className="break-words font-serif text-2xl font-semibold leading-tight md:text-3xl text-forest-900">{b.company_name}</h1>
+          <h1 className="break-words text-2xl font-bold leading-8 tracking-tight text-ink">{b.company_name}</h1>
           <span className={clsx('inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold', b.type === 'export' ? 'bg-sky-100 text-sky-900' : 'bg-amber-100 text-amber-900')}>{t.common.type[b.type]}</span>
           <StagePill stage={b.stage} />
           {b.marketing_opt_out && <span className="inline-block rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-900">{t.crm.optedOutBadge}</span>}
           {b.archived && <span className="inline-block rounded-full bg-zinc-300 px-2.5 py-0.5 text-xs font-semibold text-zinc-800">{s.archivedBadge}</span>}
         </div>
-        {b.contact_name && <p className="mt-1 text-lg text-ink/80">{b.contact_name}</p>}
+        {b.contact_name && <p className="mt-1 text-lg text-fg-secondary">{b.contact_name}</p>}
       </div>
 
       {b.archived && <p className="rounded-lg bg-zinc-200 p-3 text-base text-zinc-900">{s.archivedNote}</p>}
@@ -197,7 +197,7 @@ export default function BuyerDetail() {
       <BuyerPipelineCard b={b} />
 
       <Card className="p-4">
-        <h2 className="mb-3 font-serif text-xl font-semibold md:text-2xl text-forest-900">{s.details}</h2>
+        <h2 className="mb-3 text-[17px] font-bold leading-6 text-ink">{s.details}</h2>
         <dl className="grid gap-3 sm:grid-cols-2">
           <Fact label={f.address} value={location} />
           {b.type === 'export' ? (
@@ -225,7 +225,7 @@ export default function BuyerDetail() {
         {confirming && (
           <div role="alertdialog" aria-label={b.archived ? s.restoreQuestion : s.archiveQuestion} className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3">
             <p className="font-semibold text-forest-900">{b.archived ? s.restoreQuestion : s.archiveQuestion}</p>
-            <p className="mt-1 text-base text-ink/80">{b.archived ? s.restoreExplain : s.archiveExplain}</p>
+            <p className="mt-1 text-base text-fg-secondary">{b.archived ? s.restoreExplain : s.archiveExplain}</p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
               <Button variant={b.archived ? 'primary' : 'danger'} className="flex-1" loading={archive.isPending} onClick={() => archive.mutate(!b.archived)}>
                 {b.archived ? s.restoreYes : s.archiveYes}
@@ -234,21 +234,21 @@ export default function BuyerDetail() {
             </div>
           </div>
         )}
-        <p className="mt-3 text-sm text-ink/60">{s.noDeleteNote}</p>
+        <p className="mt-3 text-sm text-fg-muted">{s.noDeleteNote}</p>
       </Card>
 
       <Card>
-        <h2 className="px-4 pt-4 font-serif text-xl font-semibold md:text-2xl text-forest-900">{s.quotesTitle}</h2>
+        <h2 className="px-4 pt-4 text-[17px] font-bold leading-6 text-ink">{s.quotesTitle}</h2>
         {quotes.length === 0 ? <EmptyState title={s.noQuotes} /> : <ul className="mt-2 divide-y divide-cream-200 pb-2">{quotes.map((q) => <QuoteRow key={q.id} q={q} />)}</ul>}
       </Card>
 
       <Card className="p-4">
-        <h2 className="mb-3 font-serif text-xl font-semibold md:text-2xl text-forest-900">{s.activityTitle}</h2>
-        {activities.length === 0 ? <p className="text-base text-ink/60">{s.noActivity}</p> : (
+        <h2 className="mb-3 text-[17px] font-bold leading-6 text-ink">{s.activityTitle}</h2>
+        {activities.length === 0 ? <p className="text-base text-fg-muted">{s.noActivity}</p> : (
           <ol className="space-y-3">
             {activities.map((a) => (
               <li key={a.id} className="border-l-2 border-gold-500 pl-3">
-                <div className="flex flex-wrap items-center gap-x-2 text-sm text-ink/60">
+                <div className="flex flex-wrap items-center gap-x-2 text-sm text-fg-muted">
                   <span className="font-semibold text-forest-900">{t.common.activityKind[a.kind]}</span>
                   <span>{dateTime(a.happened_at)}</span>
                   {a.user_name && <span>{s.by} {a.user_name}</span>}

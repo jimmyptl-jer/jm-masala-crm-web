@@ -60,7 +60,7 @@ export function PdfPanel({ quoteId, revision }: { quoteId: string; revision: Rev
   });
 
   // draft revision: nothing to show yet
-  if (!issued) return <p className="text-sm text-ink/65">{d.pdfDraftHint}</p>;
+  if (!issued) return <p className="text-sm text-fg-muted">{d.pdfDraftHint}</p>;
 
   // issued but no PDF file: offer Retry (the revision stays issued either way)
   if (!revision.pdf_ready) {
@@ -77,7 +77,7 @@ export function PdfPanel({ quoteId, revision }: { quoteId: string; revision: Rev
 
   return (
     <Card className="p-4">
-      <h3 className="mb-3 font-serif text-xl font-semibold text-forest-900">{d.pdfTitle}</h3>
+      <h3 className="mb-3 text-[17px] font-bold leading-6 text-ink">{d.pdfTitle}</h3>
       {link.isLoading && <Spinner label={d.pdfLoading} />}
       {link.isError && <ErrorNote error={link.error} onRetry={() => void link.refetch()} />}
       {link.data && (

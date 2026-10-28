@@ -8,6 +8,7 @@ import { buyerForm, common, login, nav } from './strings/common';
 import { buyers } from './strings/buyers';
 import { crm } from './strings/buyersCrm';
 import { mkt } from './strings/marketing';
+import { pipeline } from './strings/pipeline';
 import { products } from './strings/products';
 import { quoteDetail } from './strings/quoteDetail';
 import { quoteForm } from './strings/quoteForm';
@@ -23,4 +24,4 @@ import { today } from './strings/today';
  * and read e.g. t.buyers.title. Some entries are plain strings, some are functions that build a string from
  * a number or name (e.g. t.buyers.quoteCount(3)). Add a language by swapping this object (SRS section 8).
  */
-export const t = { common, nav, login, buyerForm, today, quotes, quoteForm, quoteDetail, buyers, products, settings, send, crm, mkt, ti };
+export const t = { common, nav, login, buyerForm, today, quotes, quoteForm, quoteDetail, buyers, products, settings, send, crm, mkt, ti, pipeline };

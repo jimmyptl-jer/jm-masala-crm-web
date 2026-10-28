@@ -1,11 +1,13 @@
 /*
  * Global stylesheet, imported once by src/main.tsx.
- * Loads the two brand fonts from Google Fonts (Cormorant Garamond for headings, Inter for text), pulls in
- * Tailwind's layers and defines the few custom classes the app needs (.card, .tap, .safe-bottom,
- * .has-tabbar). Everything else is styled with Tailwind utility classes directly in the components.
+ * Loads the two design-system fonts from Google Fonts (Lato for all UI, Cormorant Garamond only for the sidebar wordmark
+ * and PDF titles), pulls in Tailwind's layers and defines the few custom classes the app needs (.card, .tap,
+ * .safe-bottom, .has-tabbar). The colour tokens below are the JM Masala design system (DESIGN_SYSTEM.md); keep them
+ * identical to tailwind.config.js and src/lib/design-tokens.ts. Everything else is styled with Tailwind utility
+ * classes directly in the components.
  */
 
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@700&family=Lato:wght@400;700;900&display=swap');
 /*
  * Tailwind's three layers: base (browser reset + element defaults), components (our .card/.tap classes) and
  * utilities (the bg-*, px-*, text-* classes used in the TSX files).
@@ -15,23 +17,29 @@
 @tailwind utilities;
 
 :root {
-  --app-bg: #edf2f8;
-  --brand-navy: #11233b;
-  --brand-navy-rgb: 17 35 59;
-  --brand-ink: #14243a;
-  --brand-ink-rgb: 20 36 58;
-  --brand-blue: #17365f;
-  --brand-blue-rgb: 23 54 95;
-  --brand-green: #16865b;
-  --brand-green-rgb: 22 134 91;
-  --glass-bg: rgba(255, 255, 255, 0.70);
-  --glass-bg-strong: rgba(255, 255, 255, 0.88);
-  --glass-border: rgba(255, 255, 255, 0.82);
-  --glass-blur: 20px;
-  --glass-shadow: 0 8px 32px rgba(28, 47, 78, 0.08), 0 1px 2px rgba(28, 47, 78, 0.04);
-  --panel-radius: 18px;
-  --control-radius: 10px;
-  --focus-ring: rgba(56, 103, 214, 0.65);
+  /* brand: paprika */
+  --paprika-50: #FFF4ED; --paprika-100: #FFE4D3; --paprika-200: #FDC5A5; --paprika-300: #F99A6B; --paprika-400: #EE6F38;
+  --paprika-500: #DC5419; --paprika-600: #C2410C; --paprika-700: #A1350B; --paprika-800: #7F2B0D; --paprika-900: #5E220D;
+  /* neutrals (warm stone) */
+  --bg: #FAFAF9; --surface: #FFFFFF; --surface-muted: #F5F5F4; --surface-hover: #F0EFEE;
+  --border: #E7E5E4; --border-strong: #D6D3D1;
+  --ink: #1C1917; --ink-secondary: #44403C; --ink-muted: #78716C; --ink-placeholder: #A8A29E;
+  /* status */
+  --success: #15803D; --success-ink: #166534; --success-bg: #DCFCE7;
+  --warning: #D97706; --warning-ink: #92400E; --warning-bg: #FEF3C7;
+  --danger: #BE123C; --danger-ink: #BE123C; --danger-bg: #FFE4E6;
+  --info: #2563EB; --info-ink: #1D4ED8; --info-bg: #DBEAFE;
+
+  --ring: var(--paprika-600);
+  --radius: 0.5rem;
+  --shadow-card: 0 1px 2px rgba(28, 25, 23, 0.04);
+  --shadow-pop: 0 10px 30px rgba(28, 25, 23, 0.10), 0 2px 6px rgba(28, 25, 23, 0.06);
+
+  /* rgb triples behind the older crm-* Tailwind names (tailwind.config.js): navy = ink, blue = paprika (primary actions, links) */
+  --brand-navy-rgb: 28 25 23;
+  --brand-ink-rgb: 28 25 23;
+  --brand-blue-rgb: 194 65 12;
+  --brand-green-rgb: 21 128 61;
   --motion-fast: 180ms;
 }
 
@@ -39,54 +47,49 @@
 @layer base {
   /* Stops mobile browsers from enlarging text after rotation. */
   html { -webkit-text-size-adjust: 100%; }
-  /*
-   * Page background (cream), text colour (ink) and font come from tailwind.config.js;
-   * overscroll-behavior-y: none stops the rubber-band bounce / pull-to-refresh effect at the top and bottom
-   * of the page.
-   */
+  /* Cream page background, warm text, Lato. overscroll-behavior-y: none stops the rubber-band bounce / pull-to-refresh. */
   body {
-    @apply text-ink font-sans antialiased;
-    background:
-      radial-gradient(ellipse at 8% 4%, rgba(93, 108, 255, 0.14), transparent 38%),
-      radial-gradient(ellipse at 92% 12%, rgba(64, 195, 153, 0.12), transparent 32%),
-      linear-gradient(135deg, #f5f8fd, var(--app-bg));
-    background-attachment: fixed;
+    @apply font-sans antialiased;
+    background-color: var(--bg);
+    color: var(--ink);
+    /* equal-width digits everywhere, so money and quantity columns line up (DESIGN_SYSTEM.md section 2) */
+    font-variant-numeric: tabular-nums;
     overscroll-behavior-y: none;
   }
   /* iOS zooms into inputs under 16px; keep them readable and tap-friendly */
   input, select, textarea { font-size: 16px; }
+  ::placeholder { color: var(--ink-placeholder); }
   /* touch-action: manipulation removes the 300 ms tap delay and double-tap zoom on buttons. */
   button { touch-action: manipulation; }
-  /* Visible blue focus outline for keyboard users only. */
-  :focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
+  /* Visible gold focus outline for keyboard users only. */
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 }
 
 /* Reusable component classes used across the screens. */
 @layer components {
-  /* Shared frosted surface for dashboards, cards, list rows and popovers. */
-  .glass-panel {
-    background: var(--glass-bg);
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border);
-    border-radius: var(--panel-radius);
-    box-shadow: var(--glass-shadow);
+  /* The card surface: white, 1px warm border, 12px radius, soft shadow (no glass / blur). Kept under the old
+     class names so existing screens follow the design system. */
+  .glass-panel, .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
   }
+  /* Dialogs and drawers: 16px radius and the popover shadow. */
   .glass-panel-strong {
-    background: var(--glass-bg-strong);
-    -webkit-backdrop-filter: blur(24px);
-    backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.92);
-    border-radius: var(--control-radius);
-    box-shadow: var(--glass-shadow);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    box-shadow: var(--shadow-pop);
   }
-  .glass-interactive { transition: transform var(--motion-fast) ease, box-shadow var(--motion-fast) ease, border-color var(--motion-fast) ease; }
-  .card { @apply glass-panel; }
-  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-    .glass-interactive:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(28, 47, 78, 0.12); border-color: rgba(255, 255, 255, 0.98); }
+  .glass-interactive { transition: box-shadow var(--motion-fast) ease, border-color var(--motion-fast) ease; }
+  @media (hover: hover) {
+    .glass-interactive:hover { box-shadow: var(--shadow-pop); border-color: var(--border-strong); }
   }
   /* Minimum 44 px touch target (min-h-tap / min-w-tap in tailwind.config.js). */
   .tap { @apply min-h-tap min-w-tap; }
+  /* Numbers: tabular digits, right-aligned (money, quantities). */
+  .num { font-variant-numeric: tabular-nums; text-align: right; }
 }
 
 /* leave room for the bottom tab bar and the iPhone home indicator */
@@ -105,4 +108,18 @@
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/*
+ * Printing the quotation (QuotePreview "Download PDF"): only the print-only copy of the document (a direct child of
+ * <body>) is shown, full size on A4 without margins, with background colours and the watercolour kept.
+ */
+@page { size: A4; margin: 0; }
+.quote-print-root { display: none; }
+@media print {
+  body { background: #fff !important; }
+  body > *:not(.quote-print-root) { display: none !important; }
+  .quote-print-root { display: block; width: 210mm; }
+  .quote-print-root .quote-doc { width: 210mm !important; min-height: 297mm !important; }
+  .quote-doc, .quote-doc * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

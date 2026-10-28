@@ -13,6 +13,9 @@ import { Layout } from '@/components/Layout';
 import Today from '@/pages/Today';
 import BuyerDetail from '@/pages/BuyerDetail';
 import Buyers from '@/pages/Buyers';
+import Pipeline from '@/pages/Pipeline';
+import ProductDetail from '@/pages/ProductDetail';
+import ProductEdit from '@/pages/ProductEdit';
 import Followups from '@/pages/Followups';
 import Products from '@/pages/Products';
 import Settings from '@/pages/Settings';
@@ -57,16 +60,18 @@ export const router = createBrowserRouter([
             children: [
               { path: '/', element: <Today /> },
               { path: '/quotes', element: <Quotes /> },
+              { path: '/quotations', element: <Navigate to="/quotes" replace /> },
               { path: '/quotes/new', element: <QuoteForm /> },
               { path: '/quotes/:id/edit', element: <QuoteForm /> },
               { path: '/quotes/:id', element: <QuoteDetail /> },
               { path: '/buyers', element: <Buyers /> },
-              { path: '/pipeline', element: <Buyers initialView="board" /> },
+              { path: '/pipeline', element: <Pipeline /> },
               { path: '/buyers/:id', element: <BuyerDetail /> },
               { path: '/follow-ups', element: <Followups /> },
               { path: '/products', element: <Products /> },
+              { path: '/products/:name', element: <ProductDetail /> },
               { path: '/orders', element: <Orders /> },
-              { element: <RequireAdmin />, children: [{ path: '/settings', element: <Settings /> }] },
+              { element: <RequireAdmin />, children: [{ path: '/settings', element: <Settings /> }, { path: '/products/new', element: <ProductEdit /> }, { path: '/products/:name/edit', element: <ProductEdit /> }] },
               { path: '*', element: <Navigate to="/" replace /> },
             ],
           },

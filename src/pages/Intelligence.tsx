@@ -45,7 +45,7 @@ export default function Intelligence() {
     <div>
       <PageHeader title={m.title} subtitle={m.subtitle} />
       {s && (s.companies > 0 || s.stat_rows > 0) && (
-        <dl className="mb-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-ink/70">
+        <dl className="mb-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-fg-secondary">
           <div><dt className="inline">Companies </dt><dd className="inline font-semibold text-forest-900">{s.companies.toLocaleString('en-US')}</dd></div>
           <div><dt className="inline">Shortlisted </dt><dd className="inline font-semibold text-forest-900">{s.shortlisted}</dd></div>
           <div><dt className="inline">Converted to leads </dt><dd className="inline font-semibold text-forest-900">{s.converted}</dd></div>

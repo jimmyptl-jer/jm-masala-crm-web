@@ -1,279 +1,341 @@
 /**
- * Today (dashboard) screen, route `/` (see web/src/router.tsx). Implements FR-60..62 and BR-08.
+ * Dashboard (route `/`): a daily sales cockpit. Who to chase today, which products buyers want, and who is going cold.
+ * Layout follows the supplied dashboard mockup and DESIGN_SYSTEM.md (white + paprika).
  *
- * API: GET /dashboard (react-query key ['dashboard']) for the follow-ups due, quotes expiring within 3 days
- * and the status counts. "Log activity" does POST /quotes/:id/activities through LogActivitySheet, which then
- * invalidates ['quote', id], ['quotes'] and ['dashboard'].
- * Composes: DueCard (local), LogActivitySheet, ExternalButton/RouterButton (quote/shared) and the ui kit
- * (Button, Card, ErrorNote, PageHeader, Spinner, StatusBadge). All words come from `t.today`.
- * All amounts are decimal strings from the API and are only formatted here (`money`, never added up).
+ * API: GET /buyers (useBuyers), GET /dashboard (quote follow-ups due), GET /quotes?limit=100 (sent quotes that end soon),
+ * GET /products (reference prices). Marking a buyer done / logging a contact does POST /buyers/:id/activities (a logged
+ * contact, which the API will use to update the buyer's last contact) and PATCH /buyers/:id (next follow-up and action),
+ * then refreshes ['buyers'], ['quotes'] and ['dashboard']. The mock implements POST /buyers/:id/activities; the real API still has to.
+ * The chase rules live in lib/chase.ts. "Done today" is remembered in this browser (localStorage 'jm.chase.done.<date>').
+ * Not built because the data is missing (docs/DOMAIN-SPEC.md): quantities in MT per buyer, daily offer prices and the Unjha
+ * market trend, samples, repeat-order timing, and the "send today's price list" broadcast. Nothing is calculated for money here.
  */
 import clsx from 'clsx';
-import { useQuery } from '@tanstack/react-query';
-import { Building2, CheckCircle2, FileText, MessageCircle, NotebookPen, Phone, Plus, Target, Trophy } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import { api } from '@/lib/api';
-import { date, money, todayIST, waLink } from '@/lib/format';
-import type { Dashboard, DueRow, QuoteList } from '@/lib/types';
-import { Button, Card, ErrorNote, PageHeader, Spinner, StatusBadge } from '@/components/ui';
-import { BuyerBoard } from '@/components/buyers/BuyerBoard';
-import { ACTIVITY_ICON, ExternalButton, RouterButton } from '@/components/quote/shared';
-import { LogActivitySheet } from '@/components/quote/LogActivitySheet';
-import { useBuyers } from '@/lib/hooks';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Check, MessageCircle, Phone } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
+import { Button, EmptyState, ErrorNote, Input, Select, Sheet, Spinner, Textarea, errorMessage, useToast } from '@/components/ui';
+import { api } from '@/lib/api';
+import { buildChase, goingCold, type ChaseKind, type ChaseRow, type ChaseTone } from '@/lib/chase';
+import { addDays, money, todayIST, waLink } from '@/lib/format';
+import { useBuyers, useProducts } from '@/lib/hooks';
+import type { ActivityKind, Buyer, Dashboard, QuoteList } from '@/lib/types';
 import { t } from '@/strings';
 
-/**
- * Config for the five count tiles at the top of Today. One entry per tile:
- *  - key: which field of `Dashboard['counts']` (the `counts` object from GET /dashboard) to show;
- *  - status: the `?status=` value the tile links to on the Quotes screen (`/quotes?status=<status>`);
- *  - label: the caption (from `t.today.tiles`); tone: the Tailwind text colour of the big number.
- * Note: `won_this_month` / `lost_this_month` are counted for the current India calendar month by the API
- * (api/src/services/dashboard.ts), but the Quotes screen they link to shows ALL won / lost quotes.
- */
-/**
- * Turns a `YYYY-MM-DD` date into the full English weekday name ("Friday") for the page subtitle.
- * @param ymd - calendar date string (the API's `today`, an India date).
- * @returns weekday name in the en-IN locale.
- * Gotcha: the date is parsed as UTC midnight and formatted with `timeZone: 'UTC'` so the browser's own
- * time zone cannot shift it to the previous or next day.
- */
-function weekday(ymd: string): string {
-  return new Date(`${ymd}T00:00:00Z`).toLocaleDateString('en-IN', { weekday: 'long', timeZone: 'UTC' });
+const c = t.today;
+/** The filter chips; "follow-up today" rows only show under All. */
+type Filter = 'all' | Exclude<ChaseKind, 'today'>;
+const FILTERS: Filter[] = ['all', 'overdue', 'quote', 'sample', 'new'];
+const KINDS: ActivityKind[] = ['call', 'whatsapp', 'email', 'meeting', 'note'];
+
+/** Morning, afternoon or evening for the current hour in India (NFR-12). */
+function dayPart(): 'morning' | 'afternoon' | 'evening' {
+  const hour = Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' }).format(new Date())) % 24;
+  return hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
 }
 
-/**
- * Wording for "how long ago was this quote sent" on a due card.
- * @param n - whole days between the issue date and today (`days_since_sent` from the API).
- * @returns "Sent today" (n <= 0), "Sent yesterday" (n = 1) or "Sent N days ago".
- */
-const sentAgo = (n: number) => (n <= 0 ? t.today.sentToday : n === 1 ? t.today.sentYesterday : t.today.sentDaysAgo(n));
+/** Product names a buyer wants, without any grade suffix like "Cumin Seeds (Europe)". */
+const wantsOf = (b: Buyer) => b.interested_products.map((x) => x.split(' (')[0] ?? x);
 
-/**
- * One follow-up card on Today: a Sent/Negotiating quote whose follow-up date is today or earlier.
- *
- * What the user sees: buyer name, quote number, grand total with currency, status badge, how long ago it
- * was sent, a red "N days overdue" pill (or amber "due today"), and the last logged activity (kind, text,
- * date) or "no activity yet".
- * Actions:
- *  - Call: a `tel:` link built from `buyer_phone` (everything except digits and `+` removed). When the buyer
- *    has no phone the button is rendered disabled with a tooltip (see ExternalButton).
- *  - WhatsApp: opens `https://wa.me/<digits>` in a new tab using `buyer_whatsapp`, falling back to
- *    `buyer_phone`; disabled when neither exists.
- *  - Log activity: calls `onLog(row)`; the parent opens LogActivitySheet for this quote.
- *  - Open: router link to `/quotes/:id` (QuoteDetail).
- * No API call is made here; the data is one element of `due[]` from GET /dashboard.
- * @param props.row - the DueRow from the dashboard response (money fields are decimal strings).
- * @param props.onLog - called with the row when the user taps "Log activity".
- * Local state: none (all derived from `row`).
- */
-function DueCard({ row, onLog }: { row: DueRow; onLog: (r: DueRow) => void }) {
-  // digits and '+' only, so spaces/dashes in the stored phone do not break the tel: link
-  const callNo = row.buyer_phone ? row.buyer_phone.replace(/[^\d+]/g, '') : '';
-  // WhatsApp number if the buyer has one, otherwise the ordinary phone
-  const waNo = row.buyer_whatsapp ?? row.buyer_phone;
-  // days_overdue is today minus next_followup (computed by the API); > 0 means the follow-up date has passed
-  const late = row.days_overdue > 0;
-  return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate text-lg font-bold text-forest-900">{row.buyer_name}</div>
-          <div className="text-sm text-ink/70">{row.number}</div>
-        </div>
-        <div className="shrink-0 text-right">
-          <div className="text-base font-semibold tabular-nums text-forest-900">{money(row.grand_total, row.currency)}</div>
-          <StatusBadge status={row.status} />
-        </div>
-      </div>
+/** Badge classes for a chase reason (status colours). */
+const TONE: Record<ChaseTone, string> = {
+  danger: 'bg-danger-bg text-danger-ink', warning: 'bg-warning-bg text-warning-ink', info: 'bg-info-bg text-info-ink', neutral: 'bg-surface-muted text-ink-secondary',
+};
 
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-ink/70">{sentAgo(row.days_since_sent)}</span>
-        <span className={clsx('rounded-full px-2.5 py-0.5 text-xs font-semibold', late ? 'bg-red-100 text-red-900' : 'bg-amber-100 text-amber-900')}>
-          {late ? t.today.overdue(row.days_overdue) : t.today.dueToday}
-        </span>
-      </div>
-
-      <div className="mt-2 rounded-lg bg-cream-100 px-3 py-2 text-sm">
-        <div className="mb-0.5 text-xs uppercase tracking-wide text-ink/55">{t.today.lastActivity}</div>
-        {row.last_kind ? (
-          <div className="flex items-start gap-2 text-ink">
-            <span className="mt-0.5 text-forest-800">{ACTIVITY_ICON[row.last_kind]}</span>
-            <span className="min-w-0">
-              <span className="line-clamp-2 break-words">
-                <span className="font-semibold">{t.common.activityKind[row.last_kind]}</span>
-                {row.last_body && <>: {row.last_body}</>}
-              </span>
-              {row.last_at && <span className="block text-xs text-ink/55">{date(row.last_at)}</span>}
-            </span>
-          </div>
-        ) : (
-          <span className="text-ink/60">{t.today.noActivity}</span>
-        )}
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <ExternalButton
-          href={callNo ? `tel:${callNo}` : null} title={callNo ? undefined : t.today.noPhone}
-          aria-label={t.today.callAria(row.buyer_name)}
-        ><Phone className="h-4 w-4" aria-hidden />{t.today.call}</ExternalButton>
-        <ExternalButton
-          href={waNo ? waLink(waNo) : null} target="_blank" rel="noopener noreferrer" title={waNo ? undefined : t.today.noPhone}
-          aria-label={t.today.whatsappAria(row.buyer_name)}
-        ><MessageCircle className="h-4 w-4" aria-hidden />{t.today.whatsapp}</ExternalButton>
-        <Button variant="secondary" onClick={() => onLog(row)} aria-label={t.today.logAria(row.buyer_name)}>
-          <NotebookPen className="h-4 w-4" aria-hidden />{t.today.log}
-        </Button>
-        <RouterButton to={`/quotes/${row.id}`} aria-label={t.today.openAria(row.buyer_name, row.number)}>{t.today.open}</RouterButton>
-      </div>
-    </Card>
-  );
+/** The contacts marked done today, kept in this browser per day. */
+function useDoneToday(today: string) {
+  const key = `jm.chase.done.${today}`;
+  const read = (): string[] => { try { return JSON.parse(localStorage.getItem(key) ?? '[]') as string[]; } catch { return []; } };
+  const [ids, setIds] = useState<string[]>(read);
+  const add = (id: string) => setIds((cur) => {
+    const next = cur.includes(id) ? cur : [...cur, id];
+    try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* not remembered */ }
+    return next;
+  });
+  return { done: ids, add };
 }
 
-function SummaryTile({ icon, label, value, detail, href, tone }: {
-  icon: ReactNode; label: string; value: number | string; detail: string; href: string;
-  tone: 'blue' | 'green' | 'amber' | 'violet';
-}) {
-  const colors = {
-    blue: 'bg-blue-100 text-blue-700',
-    green: 'bg-emerald-100 text-emerald-700',
-    amber: 'bg-amber-100 text-amber-700',
-    violet: 'bg-violet-100 text-violet-700',
-  }[tone];
+/** One KPI card; the hero card has the paprika border and number and an optional progress bar. */
+function Kpi({ label, value, sub, hero, tone, progress, subTone }: { label: string; value: number; sub: string; hero?: boolean; tone?: 'danger'; progress?: number; subTone?: 'warning' }) {
   return (
-    <Link to={href} className="card glass-interactive flex min-h-[112px] items-center gap-3 p-4 hover:bg-white/90">
-      <span className={clsx('grid h-12 w-12 shrink-0 place-items-center rounded-2xl [&>svg]:h-6 [&>svg]:w-6', colors)}>{icon}</span>
-      <span className="min-w-0">
-        <span className="block text-sm font-medium text-slate-600">{label}</span>
-        <span className="mt-0.5 block text-2xl font-bold leading-none tracking-tight text-crm-ink tabular-nums">{value}</span>
-        <span className="mt-1 block truncate text-xs text-slate-500">{detail}</span>
-      </span>
-    </Link>
-  );
-}
-
-/**
- * Today screen (route `/`): the daily dashboard the sales person opens first.
- *
- * What the user sees: a "New quote" button; five count tiles (drafts, awaiting reply, negotiating, won this
- * month, lost this month) that each link to `/quotes?status=...`; the "Follow-ups due" list (one DueCard per
- * quote, or a "You're all caught up" card with a New quote button when none are due); and, only when there
- * are any, an "Expiring soon" list of quotes whose validity ends within 3 days.
- * Actions:
- *  - Tile -> navigates to the filtered Quotes list.
- *  - Card "Log activity" -> opens LogActivitySheet; saving does POST /quotes/:id/activities and invalidates
- *    ['quote', id], ['quotes'] and ['dashboard'] (see useInvalidateQuote), so this screen refetches and the
- *    card leaves the list if the follow-up date moved to the future.
- *  - Expiring row -> `/quotes/:id`.
- * Data: GET /dashboard (react-query key ['dashboard']) returns `{ today, due, expiring, counts }`.
- * Loading shows a Spinner; a failure shows ErrorNote with a Retry button that refetches.
- * Local state: `logRow` - the DueRow whose "Log" button was tapped, or null; drives the sheet.
- */
-export default function Today() {
-  // single query for the whole screen; every quote mutation invalidates ['dashboard'] so it stays fresh
-  const dash = useQuery({ queryKey: ['dashboard'], queryFn: () => api.get<Dashboard>('/dashboard') });
-  const buyers = useBuyers();
-  const recentQuotes = useQuery({ queryKey: ['dashboard', 'recent-quotes'], queryFn: () => api.get<QuoteList>('/quotes?limit=5') });
-  const { me } = useAuth();
-  const [logRow, setLogRow] = useState<DueRow | null>(null);
-  const d = dash.data;
-  // show the server's idea of today (India date, NFR-12); fall back to the browser's India date while loading
-  const day = d?.today ?? todayIST();
-
-  return (
-    <div>
-      <PageHeader
-        title={`Good morning, ${me?.full_name || 'there'}`}
-        subtitle={`Your sales overview for ${weekday(day)}, ${date(day)}.`}
-        actions={<RouterButton to="/quotes/new" variant="gold"><Plus className="h-5 w-5" aria-hidden />{t.today.newQuote}</RouterButton>}
-      />
-
-      {dash.isLoading && <Spinner />}
-      {dash.isError && <ErrorNote error={dash.error} onRetry={() => void dash.refetch()} />}
-
-      {d && (
-        <div className="space-y-5">
-          <nav aria-label="Sales summary" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            <SummaryTile icon={<Building2 />} label="Total buyers" value={buyers.data?.length ?? '—'} detail="In your buyer list" href="/buyers" tone="blue" />
-            <SummaryTile icon={<FileText />} label="Open quotations" value={d.counts.awaiting_reply + d.counts.negotiating} detail="Awaiting a buyer decision" href="/quotes" tone="green" />
-            <SummaryTile icon={<Target />} label="Follow-ups due" value={d.due.length} detail={d.due.length ? 'Needs attention today' : 'You are all caught up'} href="/follow-ups" tone="amber" />
-            <SummaryTile icon={<Trophy />} label="Won this month" value={d.counts.won_this_month} detail="Closed won quotations" href="/quotes?status=won" tone="violet" />
-          </nav>
-
-          <section className="glass-panel p-3 md:p-4" aria-labelledby="pipeline-heading">
-            <div className="mb-3 flex items-center justify-between gap-3 px-1">
-              <div><h2 id="pipeline-heading" className="text-lg font-semibold tracking-tight text-crm-ink md:text-xl">Buyer pipeline</h2><p className="text-sm text-slate-500">Move every relationship toward its next step.</p></div>
-              <Link to="/buyers" className="tap shrink-0 rounded-lg px-3 text-sm font-semibold text-blue-700 hover:bg-blue-50">View buyers <span aria-hidden>→</span></Link>
-            </div>
-            {buyers.isPending ? <Spinner /> : buyers.isError ? <ErrorNote error={buyers.error} onRetry={() => void buyers.refetch()} /> : <BuyerBoard buyers={buyers.data ?? []} />}
-          </section>
-
-          <div className="grid gap-4 xl:grid-cols-[1.1fr_1fr]">
-            <section className="glass-panel min-w-0 p-4" aria-labelledby="due-h">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div><h2 id="due-h" className="text-lg font-semibold tracking-tight text-crm-ink">Follow-ups due today</h2><p className="text-sm text-slate-500">{d.due.length} buyer{d.due.length === 1 ? '' : 's'} to contact</p></div>
-                <Link to="/quotes" className="tap rounded-lg px-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">View all</Link>
-              </div>
-              {d.due.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-200 bg-white/40 px-4 py-7 text-center">
-                  <CheckCircle2 className="h-8 w-8 text-emerald-600" aria-hidden />
-                  <p className="font-semibold text-crm-ink">{t.today.caughtUp}</p><p className="text-sm text-slate-500">{t.today.caughtUpHint}</p>
-                  <RouterButton to="/quotes/new" variant="gold" className="mt-1"><Plus className="h-4 w-4" aria-hidden />{t.today.newQuote}</RouterButton>
-                </div>
-              ) : <div className="space-y-2">{d.due.slice(0, 4).map((r) => <DueCard key={r.id} row={r} onLog={setLogRow} />)}</div>}
-            </section>
-
-            <section className="glass-panel min-w-0 p-4" aria-labelledby="recent-quotes-heading">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div><h2 id="recent-quotes-heading" className="text-lg font-semibold tracking-tight text-crm-ink">Recent quotations</h2><p className="text-sm text-slate-500">The latest quote activity</p></div>
-                <Link to="/quotes" className="tap rounded-lg px-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">View all</Link>
-              </div>
-              {recentQuotes.isPending ? <Spinner /> : recentQuotes.isError ? <ErrorNote error={recentQuotes.error} onRetry={() => void recentQuotes.refetch()} /> : recentQuotes.data?.data.length ? (
-                <div className="overflow-x-auto"><table className="w-full min-w-[500px] text-left text-sm">
-                  <thead><tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500"><th className="px-2 py-2 font-medium">Ref</th><th className="px-2 py-2 font-medium">Buyer</th><th className="px-2 py-2 font-medium">Value</th><th className="px-2 py-2 font-medium">Status</th></tr></thead>
-                  <tbody>{recentQuotes.data.data.map((q) => <tr key={q.id} className="border-b border-slate-100 last:border-0 hover:bg-white/50"><td className="px-2 py-3"><Link to={`/quotes/${q.id}`} className="font-medium text-blue-700 hover:underline">{q.number ?? 'Draft'}</Link></td><td className="max-w-[170px] truncate px-2 py-3 font-medium text-slate-800">{q.buyer_name}</td><td className="whitespace-nowrap px-2 py-3 tabular-nums text-slate-600">{money(q.grand_total, q.currency)}</td><td className="px-2 py-3"><StatusBadge status={q.status} /></td></tr>)}</tbody>
-                </table></div>
-              ) : <div className="rounded-xl border border-dashed border-slate-200 bg-white/40 px-4 py-8 text-center text-sm text-slate-500">No quotations to show yet.</div>}
-            </section>
-          </div>
-
-          {d.expiring.length > 0 && (
-            <section aria-labelledby="exp-h">
-              <h2 id="exp-h" className="mb-2 text-xl font-semibold text-crm-ink">{t.today.expiringTitle}</h2>
-              <p className="mb-2 text-sm text-ink/65">{t.today.expiringHint}</p>
-              <Card>
-                <ul className="divide-y divide-cream-200">
-                  {d.expiring.map((e) => (
-                    <li key={e.id}>
-                      <Link to={`/quotes/${e.id}`} className="tap flex items-center justify-between gap-3 p-3 hover:bg-forest-50">
-                        <span className="min-w-0">
-                          <span className="block truncate text-base font-semibold text-forest-900">{e.buyer_name}</span>
-                          <span className="block text-sm text-ink/65">{e.number} · {t.today.validUntil(date(e.valid_until))}</span>
-                        </span>
-                        <span className="shrink-0 text-right">
-                          <span className="block text-sm font-semibold text-amber-900">{e.days_left <= 0 ? t.today.expiresToday : t.today.daysLeft(e.days_left)}</span>
-                          <span className="block text-sm tabular-nums text-ink/70">{money(e.grand_total, e.currency)}</span>
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            </section>
-          )}
+    <div className={clsx('rounded-xl border bg-surface p-5 shadow-card', hero ? 'border-paprika-200' : 'border-line')}>
+      <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-ink-muted">{label}</p>
+      <p className={clsx('mt-2 text-[28px] font-bold leading-8 tabular-nums', hero ? 'text-paprika' : tone === 'danger' ? 'text-danger-ink' : 'text-ink')}>{value}</p>
+      <p className={clsx('mt-1 text-sm', subTone === 'warning' ? 'text-warning-ink' : 'text-ink-muted')}>{sub}</p>
+      {progress !== undefined && (
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-muted" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={c.kpiProgress(0, 0)}>
+          <div className="h-full rounded-full bg-paprika" style={{ width: `${Math.round(progress * 100)}%` }} />
         </div>
       )}
-
-      {/* key resets the sheet's form state whenever a different quote is chosen; it renders nothing while
-         closed */}
-      <LogActivitySheet
-        key={logRow?.id ?? 'none'}
-        open={logRow !== null}
-        onClose={() => setLogRow(null)}
-        quoteId={logRow?.id ?? ''}
-        subtitle={logRow ? `${logRow.buyer_name}, ${logRow.number}` : undefined}
-      />
     </div>
+  );
+}
+
+/** Square icon button of a chase row (WhatsApp is tinted green); a disabled one when there is no number. */
+function IconAction({ href, label, tint, disabled, children, onClick, newTab }: { href?: string; label: string; tint?: boolean; disabled?: boolean; children: React.ReactNode; onClick?: () => void; newTab?: boolean }) {
+  const cls = clsx('tap grid h-9 w-9 place-items-center rounded-lg border', tint ? 'border-success-bg bg-success-bg text-success-ink hover:border-success' : 'border-line bg-surface text-ink-secondary hover:bg-surface-hover', disabled && 'cursor-not-allowed opacity-50');
+  if (disabled) return <button type="button" disabled aria-label={label} title={c.noPhone} className={cls}>{children}</button>;
+  if (href) return <a href={href} aria-label={label} title={label} className={cls} {...(newTab ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{children}</a>;
+  return <button type="button" onClick={onClick} aria-label={label} title={label} className={cls}>{children}</button>;
+}
+
+/** Sheet used by both "Mark as done" and "+ Log contact": how you contacted them, what happened, and (done only) the next follow-up. */
+function ContactSheet({ mode, buyers, buyer, onClose, onSaved }: { mode: 'done' | 'log'; buyers: Buyer[]; buyer?: Buyer; onClose: () => void; onSaved: (id: string) => void }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [buyerId, setBuyerId] = useState(buyer?.id ?? '');
+  const [kind, setKind] = useState<ActivityKind>('call');
+  const [body, setBody] = useState('');
+  const [next, setNext] = useState(addDays(todayIST(), 3));
+  const [nextAction, setNextAction] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [fatal, setFatal] = useState<unknown>(null);
+
+  const submit = async () => {
+    const e: Record<string, string> = {};
+    if (!buyerId) e.buyer = c.buyerRequired;
+    if (!body.trim()) e.body = c.outcomeRequired;
+    setErrors(e);
+    if (Object.keys(e).length || busy) return;
+    setBusy(true);
+    setFatal(null);
+    try {
+      await api.post(`/buyers/${buyerId}/activities`, { kind, body: body.trim() });
+      if (mode === 'done') await api.patch(`/buyers/${buyerId}`, { next_followup: next || null, next_action: nextAction.trim() || null });
+      await Promise.all([qc.invalidateQueries({ queryKey: ['buyers'] }), qc.invalidateQueries({ queryKey: ['quotes'] }), qc.invalidateQueries({ queryKey: ['dashboard'] })]);
+      toast(c.savedToast);
+      onSaved(buyerId);
+      onClose();
+    } catch (err) {
+      setFatal(err);
+      toast(errorMessage(err) || c.saveFailed, 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Sheet open onClose={onClose} title={mode === 'done' ? c.doneTitle : c.logTitle}>
+      <form className="space-y-3" noValidate onSubmit={(ev) => { ev.preventDefault(); void submit(); }}>
+        <p className="text-sm text-ink-muted">{mode === 'done' && buyer ? c.doneSubtitle(buyer.company_name) : c.logSubtitle}</p>
+        {!buyer && (
+          <Select label={c.buyer} value={buyerId} onChange={(e) => setBuyerId(e.target.value)} error={errors.buyer}>
+            <option value="">{c.chooseBuyer}</option>
+            {buyers.map((b) => <option key={b.id} value={b.id}>{b.company_name}</option>)}
+          </Select>
+        )}
+        <Select label={c.kind} value={kind} onChange={(e) => setKind(e.target.value as ActivityKind)}>
+          {KINDS.map((k) => <option key={k} value={k}>{t.common.activityKind[k]}</option>)}
+        </Select>
+        <Textarea label={c.outcome} placeholder={c.outcomePlaceholder} value={body} onChange={(e) => setBody(e.target.value)} error={errors.body} />
+        {mode === 'done' && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input type="date" label={c.nextDate} value={next} min={todayIST()} onChange={(e) => setNext(e.target.value)} />
+            <Input label={c.nextAction} optional placeholder={c.nextActionPlaceholder} value={nextAction} onChange={(e) => setNextAction(e.target.value)} />
+          </div>
+        )}
+        {fatal !== null && <ErrorNote error={fatal} />}
+        <div className="flex gap-2 pt-1">
+          <Button variant="secondary" className="flex-1" onClick={onClose} disabled={busy}>{c.cancel}</Button>
+          <Button type="submit" className="flex-1" loading={busy}>{busy ? c.saving : c.save}</Button>
+        </div>
+      </form>
+    </Sheet>
+  );
+}
+
+/** Dashboard screen. Local state: Me/Team, the chase filter, and which contact sheet is open. */
+export default function Today() {
+  const { me } = useAuth();
+  const navigate = useNavigate();
+  const today = todayIST();
+  const [scope, setScope] = useState<'me' | 'team'>('me');
+  const [filter, setFilter] = useState<Filter>('all');
+  const [sheet, setSheet] = useState<{ mode: 'done' | 'log'; buyer?: Buyer } | null>(null);
+  const { done, add } = useDoneToday(today);
+
+  const buyersQ = useBuyers({ archived: 'false' });
+  const dash = useQuery({ queryKey: ['dashboard'], queryFn: () => api.get<Dashboard>('/dashboard') });
+  const quotesQ = useQuery({ queryKey: ['quotes', 'dashboard'], queryFn: () => api.get<QuoteList>('/quotes?limit=100') });
+  const products = useProducts({ archived: 'false' });
+
+  const mine = useMemo(() => (buyersQ.data ?? []).filter((b) => scope === 'team' || !b.assigned_to || b.assigned_to === me?.id), [buyersQ.data, scope, me?.id]);
+  const mineIds = useMemo(() => new Set(mine.map((b) => b.id)), [mine]);
+  const quotes = quotesQ.data?.data ?? [];
+  const chase = useMemo(() => buildChase(mine, quotes.filter((q) => mineIds.has(q.buyer_id)), (dash.data?.due ?? []).filter((d) => mineIds.has(d.buyer_id)), today), [mine, mineIds, quotes, dash.data, today]);
+  const cold = useMemo(() => goingCold(mine, today), [mine, today]);
+
+  const doneNow = done.filter((id) => mineIds.has(id)).length;
+  const left = chase.length;
+  const total = doneNow + left;
+  const overdue = chase.filter((r) => r.kind === 'overdue').length;
+  const newBuyers = mine.filter((b) => b.stage === 'new_lead');
+  const notReplied = newBuyers.filter((b) => !b.last_contact_at).length;
+  const waiting = quotes.filter((q) => mineIds.has(q.buyer_id) && q.status === 'sent').length;
+  const shown = filter === 'all' ? chase : chase.filter((r) => r.kind === filter);
+  const counts = (f: Filter) => (f === 'all' ? chase.length : chase.filter((r) => r.kind === f).length);
+
+  // demand per approved product: how many live buyers want it, with a reference price from the product list
+  const demand = useMemo(() => {
+    const byName = new Map<string, number>();
+    for (const b of mine.filter((x) => x.stage !== 'lost')) for (const name of new Set(wantsOf(b))) byName.set(name, (byName.get(name) ?? 0) + 1);
+    return [...byName.entries()].map(([name, n]) => ({ name, n, product: (products.data ?? []).find((p) => p.name === name && p.ref_rate_usd) })).sort((a, b) => b.n - a.n);
+  }, [mine, products.data]);
+  const maxDemand = Math.max(1, ...demand.map((d) => d.n));
+
+  const loading = buyersQ.isPending || dash.isPending;
+  const name = me?.full_name || c.greetingFallbackName;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold leading-8 tracking-tight text-ink">{c.greeting(dayPart(), name)}</h1>
+          <p className="mt-0.5 text-sm text-ink-muted">{loading ? ' ' : c.summary(left, waiting)}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div role="group" aria-label={c.scopeLabel} className="inline-flex rounded-lg border border-line bg-surface p-0.5">
+            {(['me', 'team'] as const).map((s) => (
+              <button key={s} type="button" aria-pressed={scope === s} onClick={() => setScope(s)}
+                className={clsx('tap rounded-md px-4 text-sm font-bold', scope === s ? 'bg-ink text-white' : 'text-ink-secondary hover:bg-surface-hover')}>{s === 'me' ? c.scopeMe : c.scopeTeam}</button>
+            ))}
+          </div>
+          <Button onClick={() => setSheet({ mode: 'log' })}>{c.logContact}</Button>
+        </div>
+      </div>
+
+      {buyersQ.isError && <ErrorNote error={buyersQ.error} onRetry={() => void buyersQ.refetch()} />}
+      {loading && !buyersQ.isError && <Spinner />}
+
+      {!loading && !buyersQ.isError && (
+        <>
+          <section aria-label={c.kpiLabel} className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <Kpi hero label={c.kpiChase} value={left} sub={c.kpiChaseSub(doneNow, left)} progress={total > 0 ? doneNow / total : 0} />
+            <Kpi label={c.kpiOverdue} value={overdue} tone="danger" sub={c.kpiOverdueSub} />
+            <Kpi label={c.kpiNew} value={newBuyers.length} sub={notReplied > 0 ? c.kpiNewSub(notReplied) : c.kpiNewNone} subTone={notReplied > 0 ? 'warning' : undefined} />
+            <Kpi label={c.kpiCold} value={cold.length} sub={c.kpiColdSub} />
+          </section>
+
+          {/* chase list */}
+          <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-card" aria-labelledby="chase-h">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4">
+              <h2 id="chase-h" className="text-[17px] font-bold leading-6 text-ink">{c.chaseTitle}</h2>
+              <div role="group" aria-label={c.filtersLabel} className="flex flex-wrap gap-1">
+                {FILTERS.map((f) => (
+                  <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}
+                    className={clsx('tap rounded-full px-3 text-sm font-bold', filter === f ? 'bg-paprika-50 text-paprika-700' : 'text-ink-muted hover:bg-surface-hover hover:text-ink')}>
+                    {c.filters[f]}{f === 'all' ? ` ${counts(f)}` : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {shown.length === 0 ? (
+              <div className="border-t border-line px-5 py-8"><EmptyState title={c.chaseEmpty}>{c.chaseEmptyHint}</EmptyState></div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[820px] text-left text-[13.5px]">
+                  <thead className="border-y border-line bg-surface-muted">
+                    <tr className="h-9 text-[11px] font-bold uppercase tracking-[0.05em] text-ink-muted">
+                      <th className="px-5">{c.colBuyer}</th><th className="px-3">{c.colWants}</th><th className="px-3">{c.colLast}</th><th className="px-3">{c.colWhy}</th><th className="px-5 text-right">{c.colAction}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {shown.map((r) => <ChaseLine key={r.buyer.id} row={r} onDone={() => setSheet({ mode: 'done', buyer: r.buyer })} onQuote={() => navigate(`/quotes/new?buyer=${r.buyer.id}`)} />)}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+            {/* product demand */}
+            <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-card" aria-labelledby="demand-h">
+              <div className="flex items-center justify-between gap-2 px-5 py-4">
+                <h2 id="demand-h" className="text-[17px] font-bold leading-6 text-ink">{c.demandTitle}</h2>
+                <Link to="/products" className="text-sm font-bold text-paprika hover:underline">{c.editPrices}</Link>
+              </div>
+              {demand.length === 0 ? (
+                <div className="border-t border-line px-5 py-8"><EmptyState title={c.demandEmpty}>{c.demandEmptyHint}</EmptyState></div>
+              ) : (
+                <table className="w-full text-[13.5px]">
+                  <thead className="border-y border-line bg-surface-muted">
+                    <tr className="h-9 text-[11px] font-bold uppercase tracking-[0.05em] text-ink-muted"><th className="px-5 text-left">{c.colProduct}</th><th className="px-3 text-left">{c.colDemand}</th><th className="px-5 text-right">{c.colOffer}</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {demand.map((d) => (
+                      <tr key={d.name} className="h-[60px]">
+                        <td className="px-5"><div className="font-bold text-ink">{d.name}</div><div className="text-xs text-ink-muted">{c.buyers(d.n)}</div></td>
+                        <td className="px-3"><div className="flex items-center gap-3"><div className="h-1.5 w-full max-w-[12rem] overflow-hidden rounded-full bg-surface-muted"><div className="h-full rounded-full bg-paprika" style={{ width: `${(d.n / maxDemand) * 100}%` }} /></div><span className="w-6 tabular-nums text-ink-secondary">{d.n}</span></div></td>
+                        <td className="px-5 text-right">{d.product ? <><div className="num font-bold text-ink">{money(d.product.ref_rate_usd, 'USD')}</div><div className="text-xs text-ink-muted">{c.perUnit(d.product.unit)}</div></> : <span className="text-xs text-ink-muted">{c.noPrice}</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              <p className="border-t border-line px-5 py-3 text-xs text-ink-muted">{c.demandNote}</p>
+            </section>
+
+            {/* going cold */}
+            <section className="rounded-xl border border-line bg-surface p-5 shadow-card" aria-labelledby="cold-h">
+              <h2 id="cold-h" className="text-[17px] font-bold leading-6 text-ink">{c.coldTitle}</h2>
+              {cold.length === 0 ? (
+                <div className="mt-3"><EmptyState title={c.coldEmpty}>{c.coldEmptyHint}</EmptyState></div>
+              ) : (
+                <ul className="mt-2 divide-y divide-line">
+                  {cold.slice(0, 6).map(({ buyer: b, days }) => {
+                    const wa = b.whatsapp ?? b.phone;
+                    return (
+                      <li key={b.id} className="flex items-center gap-3 py-3">
+                        <div className="min-w-0 flex-1">
+                          <Link to={`/buyers/${b.id}`} className="block truncate font-bold text-ink hover:underline">{b.company_name}</Link>
+                          <p className="truncate text-sm text-ink-muted">{[b.country ?? b.state, wantsOf(b)[0]].filter(Boolean).join(' · ')}</p>
+                        </div>
+                        <span className={clsx('text-sm font-bold tabular-nums', days >= 30 ? 'text-danger-ink' : 'text-warning-ink')}>{c.coldDays(days)}</span>
+                        <IconAction href={wa ? waLink(wa, c.waMessage(b.contact_name ?? b.company_name, wantsOf(b)[0] ?? null)) : undefined} disabled={!wa} label={c.whatsappAria(b.company_name)} tint newTab><MessageCircle className="h-4 w-4" aria-hidden /></IconAction>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          </div>
+        </>
+      )}
+
+      {sheet && <ContactSheet mode={sheet.mode} buyers={mine} buyer={sheet.buyer} onClose={() => setSheet(null)} onSaved={add} />}
+    </div>
+  );
+}
+
+/** One row of the chase list: buyer, what they want, last contact, the reason badge and the actions. */
+function ChaseLine({ row, onDone, onQuote }: { row: ChaseRow; onDone: () => void; onQuote: () => void }) {
+  const b = row.buyer;
+  const wants = wantsOf(b);
+  const since = row.daysSinceContact;
+  const wa = b.whatsapp ?? b.phone;
+  const callNo = b.phone ? b.phone.replace(/[^\d+]/g, '') : '';
+  return (
+    <tr className="h-[72px] hover:bg-surface-hover">
+      <td className="px-5"><Link to={`/buyers/${b.id}`} className="font-bold text-ink hover:underline">{b.company_name}</Link><div className="text-ink-muted">{b.country ?? b.state ?? '—'}</div></td>
+      <td className="px-3"><div className="text-ink-secondary">{wants.length ? wants.join(', ') : <span className="text-ink-muted">{c.noWants}</span>}</div></td>
+      <td className={clsx('px-3 tabular-nums', since !== null && since > 10 ? 'font-bold text-danger-ink' : 'text-ink-secondary')}>{since === null ? c.noContact : c.daysAgo(since)}</td>
+      <td className="px-3"><span className={clsx('inline-flex h-6 items-center rounded-full px-2.5 text-xs font-bold', TONE[row.tone])}>{row.label}</span></td>
+      <td className="px-5">
+        <div className="flex items-center justify-end gap-2">
+          {row.kind === 'new' ? (
+            <button type="button" onClick={onQuote} aria-label={c.quoteAria(b.company_name)} className="tap h-9 rounded-lg bg-paprika px-4 text-sm font-bold text-white hover:bg-paprika-700">{c.quote}</button>
+          ) : (
+            <>
+              <IconAction href={wa ? waLink(wa, c.waMessage(b.contact_name ?? b.company_name, wants[0] ?? null)) : undefined} disabled={!wa} label={c.whatsappAria(b.company_name)} tint newTab><MessageCircle className="h-4 w-4" aria-hidden /></IconAction>
+              <IconAction href={callNo ? `tel:${callNo}` : undefined} disabled={!callNo} label={c.callAria(b.company_name)}><Phone className="h-4 w-4" aria-hidden /></IconAction>
+              <IconAction label={c.doneAria(b.company_name)} onClick={onDone}><Check className="h-4 w-4" aria-hidden /></IconAction>
+            </>
+          )}
+        </div>
+      </td>
+    </tr>
   );
 }

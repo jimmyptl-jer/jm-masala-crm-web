@@ -27,12 +27,12 @@ export function ActivityTimeline({ activities, onLog }: { activities: Activity[]
   return (
     <section aria-labelledby="activity-h">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <h2 id="activity-h" className="font-serif text-xl font-semibold md:text-2xl text-forest-900">{d.activityTitle}</h2>
+        <h2 id="activity-h" className="text-[17px] font-bold leading-6 text-ink">{d.activityTitle}</h2>
         <Button variant="secondary" onClick={onLog}>{d.logButton}</Button>
       </div>
       <Card>
         {activities.length === 0 ? (
-          <p className="p-4 text-sm text-ink/65">{d.activityEmpty}</p>
+          <p className="p-4 text-sm text-fg-muted">{d.activityEmpty}</p>
         ) : (
           <ol className="divide-y divide-cream-200">
             {activities.map((a) => (
@@ -41,7 +41,7 @@ export function ActivityTimeline({ activities, onLog }: { activities: Activity[]
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-semibold text-forest-900">{t.common.activityKind[a.kind]}</div>
                   <p className="whitespace-pre-line break-words text-base text-ink">{a.body}</p>
-                  <div className="mt-0.5 text-xs text-ink/55">
+                  <div className="mt-0.5 text-xs text-fg-muted">
                     {dateTime(a.happened_at)}{a.user_name ? ` · ${d.by(a.user_name)}` : ''}
                   </div>
                 </div>

@@ -69,8 +69,8 @@ export function BuyersTab({ initialCountry }: { initialCountry?: string }) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 className="font-serif text-xl font-semibold text-forest-900 md:text-2xl">{m.buyersHeading}</h2>
-          <p className="max-w-2xl text-sm text-ink/60">{m.buyersHint}</p>
+          <h2 className="text-[17px] font-bold leading-6 text-ink">{m.buyersHeading}</h2>
+          <p className="max-w-2xl text-sm text-fg-muted">{m.buyersHint}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" loading={exportXlsx.isPending} onClick={() => exportXlsx.mutate()}><Download className="h-4 w-4" aria-hidden />{m.exportExcel}</Button>
@@ -113,7 +113,7 @@ export function BuyersTab({ initialCountry }: { initialCountry?: string }) {
         </label>
       </Card>
 
-      {d && <p className="text-sm font-medium text-ink/70" aria-live="polite">{m.results(d.total)}</p>}
+      {d && <p className="text-sm font-medium text-fg-secondary" aria-live="polite">{m.results(d.total)}</p>}
       {list.isPending ? <Spinner /> : list.isError ? <ErrorNote error={list.error} onRetry={() => void list.refetch()} /> : d && d.rows.length === 0 ? (
         <Card><EmptyState title={m.noMatch}>{m.noDataHint}</EmptyState></Card>
       ) : (
@@ -128,11 +128,11 @@ export function BuyersTab({ initialCountry }: { initialCountry?: string }) {
                     {b.in_crm && <span className="rounded-full bg-forest-50 px-2.5 py-0.5 text-xs font-semibold text-forest-800">{m.inCrmBadge}</span>}
                     {b.status !== 'new' && <span className="rounded-full bg-cream-100 px-2.5 py-0.5 text-xs font-semibold text-forest-900">{m.statuses[b.status]}</span>}
                   </span>
-                  <span className="block text-sm text-ink/70">{[b.country, m.roles[b.role]].filter(Boolean).join(' · ')}</span>
-                  <span className="block text-sm text-ink/80">
+                  <span className="block text-sm text-fg-secondary">{[b.country, m.roles[b.role]].filter(Boolean).join(' · ')}</span>
+                  <span className="block text-sm text-fg-secondary">
                     {b.shipments > 0
                       ? [m.ship(b.shipments), b.last_shipment && m.lastShip(date(b.last_shipment)), b.qty_12m > 0 && m.kg(b.qty_12m), b.india_shipments > 0 && m.fromIndia(b.india_shipments), b.suppliers > 0 && m.suppliersN(b.suppliers)].filter(Boolean).join(' · ')
-                      : <span className="text-ink/50">{m.noEvidence}</span>}
+                      : <span className="text-fg-muted">{m.noEvidence}</span>}
                   </span>
                 </span>
               </button>

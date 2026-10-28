@@ -144,7 +144,7 @@ function StatusForm({ onClose, quote }: { onClose: () => void; quote: QuoteDetai
       ) : undefined}
     >
       <div className="space-y-3">
-        <div className="flex items-center gap-2 text-sm text-ink/70">{d.statusCurrent}: <StatusBadge status={quote.status} /></div>
+        <div className="flex items-center gap-2 text-sm text-fg-secondary">{d.statusCurrent}: <StatusBadge status={quote.status} /></div>
 
         {hint && <p className="rounded-lg bg-gold-100 p-3 text-sm text-forest-900">{hint}</p>}
 
@@ -160,7 +160,7 @@ function StatusForm({ onClose, quote }: { onClose: () => void; quote: QuoteDetai
                     to === o.to ? 'border-forest-900 bg-forest-900 text-white' : 'border-forest-900/25 bg-white text-forest-900 hover:bg-forest-50')}
                 >
                   <span className="block text-base font-semibold">{o.label}</span>
-                  <span className={clsx('block text-sm', to === o.to ? 'text-white/80' : 'text-ink/60')}>{o.hint}</span>
+                  <span className={clsx('block text-sm', to === o.to ? 'text-white/80' : 'text-fg-muted')}>{o.hint}</span>
                 </button>
               ))}
             </div>

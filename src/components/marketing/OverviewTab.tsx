@@ -47,15 +47,15 @@ export function OverviewTab() {
           {dueRows.length > 0 && (
             <section ref={followupsRef} aria-labelledby="fu-h" className="scroll-mt-4">
               <Card className="p-4">
-                <h2 id="fu-h" className="font-serif text-xl font-semibold text-forest-900 md:text-2xl">{c.followupsHeading}</h2>
-                <p className="mb-2 text-sm text-ink/60">{c.followupsHint}</p>
+                <h2 id="fu-h" className="text-[17px] font-bold leading-6 text-ink">{c.followupsHeading}</h2>
+                <p className="mb-2 text-sm text-fg-muted">{c.followupsHint}</p>
                 <ul className="divide-y divide-cream-200">
                   {dueRows.map((b) => (
                     <li key={b.id}>
                       <Link to={`/buyers/${b.id}`} className="flex min-h-[52px] flex-wrap items-center gap-x-3 gap-y-1 py-2 hover:bg-forest-50">
                         <span className="min-w-0 flex-1 break-words font-semibold text-forest-900">{b.company_name}</span>
                         <StagePill stage={b.stage} />
-                        <span className="text-sm text-ink/80">{b.next_action}</span>
+                        <span className="text-sm text-fg-secondary">{b.next_action}</span>
                         <span className="text-sm font-semibold text-red-700">{b.next_followup && date(b.next_followup)}</span>
                       </Link>
                     </li>
@@ -69,10 +69,10 @@ export function OverviewTab() {
 
           <section aria-labelledby="board-h">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-              <h2 id="board-h" className="font-serif text-xl font-semibold text-forest-900 md:text-2xl">{c.boardHeading}</h2>
+              <h2 id="board-h" className="text-[17px] font-bold leading-6 text-ink">{c.boardHeading}</h2>
               <div className="flex flex-wrap items-center gap-3">
                 {stage && (
-                  <p className="text-sm text-ink/70">
+                  <p className="text-sm text-fg-secondary">
                     {c.boardFiltered(c.stages[stage])}{' '}
                     <button type="button" onClick={() => setStage('')} className="font-medium text-forest-800 underline">{c.showAll}</button>
                   </p>

@@ -49,8 +49,8 @@ export function ShipmentsTab() {
   return (
     <div className="space-y-3">
       <div>
-        <h2 className="font-serif text-xl font-semibold text-forest-900 md:text-2xl">{m.shipmentsTabHeading}</h2>
-        <p className="max-w-2xl text-sm text-ink/60">{m.shipmentsTabHint}</p>
+        <h2 className="text-[17px] font-bold leading-6 text-ink">{m.shipmentsTabHeading}</h2>
+        <p className="max-w-2xl text-sm text-fg-muted">{m.shipmentsTabHint}</p>
       </div>
       <Card className="space-y-3 p-4">
         <Input label={m.filterText} type="search" value={q} onChange={(e) => { setQ(e.target.value); setLimit(PAGE); }} autoComplete="off" />
@@ -66,7 +66,7 @@ export function ShipmentsTab() {
         </div>
       </Card>
 
-      {d && <p className="text-sm font-medium text-ink/70" aria-live="polite">{m.totalsLine(d.total, m.kg(d.qty_kg), m.usd(d.value_usd))}</p>}
+      {d && <p className="text-sm font-medium text-fg-secondary" aria-live="polite">{m.totalsLine(d.total, m.kg(d.qty_kg), m.usd(d.value_usd))}</p>}
       {list.isPending ? <Spinner /> : list.isError ? <ErrorNote error={list.error} onRetry={() => void list.refetch()} /> : d && d.rows.length === 0 ? (
         <Card><EmptyState title={m.noData}>{m.noDataHint}</EmptyState></Card>
       ) : (
@@ -74,7 +74,7 @@ export function ShipmentsTab() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[860px] text-left text-sm">
               <thead>
-                <tr className="border-b border-cream-200 text-ink/60">
+                <tr className="border-b border-cream-200 text-fg-muted">
                   <th className="py-2 pr-2 font-medium">{m.colDate}</th><th className="px-2 font-medium">{m.colCompany}</th><th className="px-2 font-medium">{m.colProduct}</th>
                   <th className="px-2 text-right font-medium">{m.colQty}</th><th className="px-2 text-right font-medium">{m.colValue}</th>
                   <th className="px-2 font-medium">{m.colOrigin}</th><th className="px-2 font-medium">{m.colDest}</th><th className="px-2 font-medium">{m.colSupplier}</th>
@@ -84,12 +84,12 @@ export function ShipmentsTab() {
                 {d?.rows.map((s) => (
                   <tr key={s.id} className="border-b border-cream-200 align-top last:border-0">
                     <td className="whitespace-nowrap py-2 pr-2">{s.shipment_date ? date(s.shipment_date) : '—'}{s.is_estimate && <span className="ml-1 text-xs text-amber-700">({m.estimate})</span>}</td>
-                    <td className="px-2 font-semibold text-forest-900">{s.company_name}<div className="text-xs font-normal text-ink/60">{s.company_country}</div></td>
-                    <td className="px-2">{s.description ?? '—'}<div className="text-xs text-ink/50">{s.hs6}</div></td>
+                    <td className="px-2 font-semibold text-forest-900">{s.company_name}<div className="text-xs font-normal text-fg-muted">{s.company_country}</div></td>
+                    <td className="px-2">{s.description ?? '—'}<div className="text-xs text-fg-muted">{s.hs6}</div></td>
                     <td className="whitespace-nowrap px-2 text-right tabular-nums">{s.quantity_kg ? m.kg(s.quantity_kg) : '—'}</td>
                     <td className="whitespace-nowrap px-2 text-right tabular-nums">{s.value_usd ? m.usd(s.value_usd) : '—'}</td>
-                    <td className="px-2">{s.origin_country ?? '—'}<div className="text-xs text-ink/50">{s.origin_port}</div></td>
-                    <td className="px-2">{s.destination_country ?? '—'}<div className="text-xs text-ink/50">{s.destination_port}</div></td>
+                    <td className="px-2">{s.origin_country ?? '—'}<div className="text-xs text-fg-muted">{s.origin_port}</div></td>
+                    <td className="px-2">{s.destination_country ?? '—'}<div className="text-xs text-fg-muted">{s.destination_port}</div></td>
                     <td className="px-2">{s.supplier_name ?? '—'}</td>
                   </tr>
                 ))}

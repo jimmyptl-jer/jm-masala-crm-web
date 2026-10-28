@@ -42,7 +42,7 @@ export function TermsEditor({ title, items, onChange, errors }:
   return (
     <fieldset className="space-y-3 rounded-lg border border-forest-900/15 p-3">
       <legend className="px-1 text-lg font-semibold text-forest-900">{title}</legend>
-      {items.length === 0 && <p className="text-sm text-ink/60">{s.noTerms}</p>}
+      {items.length === 0 && <p className="text-sm text-fg-muted">{s.noTerms}</p>}
       {items.map((line, i) => (
         <div key={i} className="space-y-1">
           <Textarea label={s.term(i + 1)} rows={2} value={line} error={errors[`${title}.${i}`]} onChange={(e) => onChange(items.map((x, j) => (j === i ? e.target.value : x)))} />
@@ -99,7 +99,7 @@ export function TermsPanel({ settings }: { settings: Settings }) {
 
   return (
     <form onSubmit={submit} className="space-y-3" noValidate>
-      <p className="text-sm text-ink/70">{s.termsHelp}</p>
+      <p className="text-sm text-fg-secondary">{s.termsHelp}</p>
       <TermsEditor title={s.exportTerms} items={exp} onChange={setExp} errors={pick('export_terms', s.exportTerms)} />
       <TermsEditor title={s.domesticTerms} items={dom} onChange={setDom} errors={pick('domestic_terms', s.domesticTerms)} />
       {(errors.export_terms || errors.domestic_terms) && <p role="alert" className="text-sm text-red-700">{errors.export_terms ?? errors.domestic_terms}</p>}

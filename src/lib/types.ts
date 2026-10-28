@@ -521,9 +521,13 @@ export interface Settings {
    * Seller details on the PDF. `state_code` is the company's GST state code, compared with the buyer's;
    * `logo_path` is the internal storage path of the logo (show it through `logo_url` instead).
    */
-  company: { name: string; address: string; phone: string; email: string; iec: string; gstin: string; state: string; state_code: string; logo_path?: string };
+  company: {
+    name: string; address: string; phone: string; email: string; iec: string; gstin: string; state: string; state_code: string; logo_path?: string;
+    /** Printed on the letterhead and licence strip of the quotation document (all optional until the settings screen edits them). */
+    letterhead_name?: string; website?: string; fssai?: string; cres?: string; rcmc?: string; signatory_name?: string; signatory_title?: string;
+  };
   /** Bank details printed on export quotes. */
-  bank: { bank_name: string; branch: string; account_no: string; ifsc: string; swift: string; ad_code: string };
+  bank: { beneficiary?: string; bank_name: string; branch: string; account_no: string; ifsc: string; swift: string; ad_code: string };
   /** Default terms and conditions copied onto a new export / domestic quote, one text per bullet. */
   export_terms: string[];
   domestic_terms: string[];

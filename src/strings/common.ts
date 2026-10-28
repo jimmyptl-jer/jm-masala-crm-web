@@ -33,16 +33,33 @@ export const common = {
 
 export const nav = {
   today: 'Dashboard',
-  quotes: 'Quotes',
+  quotes: 'Quotations',
   newQuote: 'New quote',
   buyers: 'Buyers',
   pipeline: 'Buyer Pipeline',
   followups: 'Follow-ups',
   orders: 'Orders',
   marketing: 'Marketing',
-  products: 'Products',
+  products: 'Products & Pricing',
   settings: 'Settings',
   signOut: 'Sign out',
+  tagline: 'Pure Indian Spices for Global Markets',
+  followupsDue: (n: number) => `Follow-ups, ${n} due`,
+  // navigation shell
+  home: 'Home',
+  groupSales: 'Sales', groupOperations: 'Operations',
+  search: 'Search', searchKey: 'Ctrl K',
+  collapse: 'Collapse sidebar', expand: 'Expand sidebar',
+  mainNav: 'Main', breadcrumb: 'Breadcrumb',
+  newMenu: '+ New', newQuotation: 'New quotation', addBuyer: 'Add buyer',
+  draftCount: (n: number) => `${n} draft quotations`,
+  more: 'More', moreNav: 'More navigation', create: 'Create', close: 'Close',
+  pageNew: 'New', pageEdit: 'Edit', pageDetails: 'Details',
+  paletteTitle: 'Search', palettePlaceholder: 'Search pages, buyers, quotations…',
+  palettePages: 'Pages', paletteBuyers: 'Buyers', paletteQuotes: 'Quotations', paletteNone: 'Nothing found',
+  roleOwner: 'Owner', roleSales: 'Sales',
+  proforma: 'Proforma invoices', samples: 'Samples', shipments: 'Shipments', payments: 'Payments',
+  soon: 'Soon', soonHint: 'Coming soon',
 };
 
 export const buyerForm = {

@@ -55,7 +55,7 @@ export default function ResetPassword() {
   if (!session) {
     return (
       <AuthShell title={s.noRecoveryTitle}>
-        <p className="mb-4 text-base text-ink/80">{s.noRecoveryHelp}</p>
+        <p className="mb-4 text-base text-fg-secondary">{s.noRecoveryHelp}</p>
         <Link to="/login" className="tap inline-flex w-full items-center justify-center rounded-lg bg-forest-900 px-4 py-2 text-base font-semibold text-white hover:bg-forest-800">{s.backToSignIn}</Link>
       </AuthShell>
     );

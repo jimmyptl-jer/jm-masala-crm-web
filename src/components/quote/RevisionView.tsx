@@ -30,7 +30,7 @@ function Term({ label, value }: { label: string; value: string | null | undefine
   if (!value) return null;
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-ink/55">{label}</dt>
+      <dt className="text-xs uppercase tracking-wide text-fg-muted">{label}</dt>
       <dd className="text-base text-ink">{value}</dd>
     </div>
   );
@@ -87,7 +87,7 @@ export function RevisionView({ quote, revision }: { quote: QuoteDetail; revision
 
   return (
     <div className="space-y-4">
-      <div className="text-sm text-ink/65">
+      <div className="text-sm text-fg-muted">
         {revision.state === 'issued' && revision.issued_at ? d.issuedOn(date(revision.issued_at), revision.issued_by_name) : d.revisionDraftNote}
       </div>
 
@@ -104,16 +104,16 @@ export function RevisionView({ quote, revision }: { quote: QuoteDetail; revision
       </Card>
 
       <section aria-labelledby="items-h">
-        <h3 id="items-h" className="mb-2 font-serif text-xl font-semibold text-forest-900">{d.items}</h3>
+        <h3 id="items-h" className="mb-2 text-[17px] font-bold leading-6 text-ink">{d.items}</h3>
         <ul className="space-y-2">
           {revision.lines.map((l, i) => (
             <li key={l.id} className="card p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-base font-semibold text-forest-900">
-                    {l.product.name}{l.product.grade && <span className="font-normal text-ink/70"> · {l.product.grade}</span>}
+                    {l.product.name}{l.product.grade && <span className="font-normal text-fg-secondary"> · {l.product.grade}</span>}
                   </div>
-                  {l.packing && <div className="text-sm text-ink/65">{d.packing}: {l.packing}</div>}
+                  {l.packing && <div className="text-sm text-fg-muted">{d.packing}: {l.packing}</div>}
                   <div className="mt-1 text-base tabular-nums text-ink">
                     {qty(l.quantity)} {l.product.unit} × {money(l.rate, cur, { symbol: false })}
                   </div>
@@ -122,7 +122,7 @@ export function RevisionView({ quote, revision }: { quote: QuoteDetail; revision
               </div>
 
               {domestic && (
-                <div className="mt-1 text-sm text-ink/65">
+                <div className="mt-1 text-sm text-fg-muted">
                   {d.gst(qty(l.gst_rate))}
                   {nonZero(l.igst)
                     ? ` · ${d.igst} ${money(l.igst, cur, { symbol: false })}`
@@ -154,13 +154,13 @@ export function RevisionView({ quote, revision }: { quote: QuoteDetail; revision
           <TotalRow strong label={d.grandTotal} value={money(revision.grand_total, cur)} />
         </dl>
         {revision.amount_words && (
-          <p className="mt-3 text-sm text-ink/70"><span className="font-medium">{d.amountWords}:</span> {revision.amount_words}</p>
+          <p className="mt-3 text-sm text-fg-secondary"><span className="font-medium">{d.amountWords}:</span> {revision.amount_words}</p>
         )}
       </Card>
 
       {revision.notes && (
         <section>
-          <h3 className="mb-1 font-serif text-xl font-semibold text-forest-900">{d.notes}</h3>
+          <h3 className="mb-1 text-[17px] font-bold leading-6 text-ink">{d.notes}</h3>
           <p className="whitespace-pre-line text-base text-ink">{revision.notes}</p>
         </section>
       )}
@@ -168,7 +168,7 @@ export function RevisionView({ quote, revision }: { quote: QuoteDetail; revision
       {revision.terms.length > 0 && (
         <details className="card px-3">
           <summary className="min-h-tap cursor-pointer py-2.5 text-base font-semibold text-forest-900">{d.termsConditions}</summary>
-          <ol className="list-decimal space-y-1 pb-3 pl-5 text-sm text-ink/80">
+          <ol className="list-decimal space-y-1 pb-3 pl-5 text-sm text-fg-secondary">
             {revision.terms.map((x, i) => <li key={i}>{x}</li>)}
           </ol>
         </details>
@@ -190,7 +190,7 @@ export function RevisionView({ quote, revision }: { quote: QuoteDetail; revision
                   {!m.complete && <p className="pt-1 text-sm text-red-800">{d.marginIncomplete}</p>}
                 </dl>
               ) : (
-                <p className="text-sm text-ink/70">{d.noMargin}</p>
+                <p className="text-sm text-fg-secondary">{d.noMargin}</p>
               )}
             </div>
           )}

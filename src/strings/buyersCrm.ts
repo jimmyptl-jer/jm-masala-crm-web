@@ -15,6 +15,10 @@ export const crm = {
   lastContactLabel: 'Last contact',
   overdueWord: 'overdue',
   noContactYet: 'No contact logged yet',
+  latestQuote: 'Latest quote',
+  quoteExpiresToday: 'Quote expires today',
+  quoteExpiresIn: (n: number) => (n === 1 ? 'Quote expires in 1 day' : `Quote expires in ${n} days`),
+  cardNoNextAction: 'No next action set',
 
   // sections of the form and the detail page
   moreDetails: 'Sales tracking',

@@ -67,7 +67,7 @@ export function IssueSheet({ open, onClose, buyer, busy, onConfirm }: {
       }
     >
       <div className="space-y-3">
-        <p className="text-sm text-ink/80">{s.issueWarning}</p>
+        <p className="text-sm text-fg-secondary">{s.issueWarning}</p>
         <SendPicker buyer={buyer} value={choice} onChange={setPicked} withNone />
         {direct && (
           <label className="block">

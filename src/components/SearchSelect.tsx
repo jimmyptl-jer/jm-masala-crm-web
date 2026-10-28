@@ -71,10 +71,10 @@ export function SearchSelect({ label, value, options, onChange, placeholder = 'C
             className={clsx('flex min-h-tap w-full items-center justify-between gap-2 rounded-lg border bg-white px-3 py-2 text-left text-base disabled:bg-cream-100',
               error ? 'border-red-600' : 'border-forest-900/25')}
           >
-            <span className={clsx('min-w-0 truncate', !selected && 'text-ink/40')}>
-              {selected ? <>{selected.label}{selected.sub && <span className="ml-2 text-sm text-ink/55">{selected.sub}</span>}</> : placeholder}
+            <span className={clsx('min-w-0 truncate', !selected && 'text-fg-muted')}>
+              {selected ? <>{selected.label}{selected.sub && <span className="ml-2 text-sm text-fg-muted">{selected.sub}</span>}</> : placeholder}
             </span>
-            <ChevronDown className="h-4 w-4 shrink-0 text-ink/50" aria-hidden />
+            <ChevronDown className="h-4 w-4 shrink-0 text-fg-muted" aria-hidden />
           </button>
         )}
       </Field>
@@ -82,7 +82,7 @@ export function SearchSelect({ label, value, options, onChange, placeholder = 'C
       {/* The picker. Selecting a row calls onChange and closes; disabled options cannot be clicked. */}
       <Sheet open={open} onClose={() => setOpen(false)} title={label}>
         <div className="relative mb-3">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/40" aria-hidden />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted" aria-hidden />
           <input
             ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder={searchPlaceholder} aria-label={searchPlaceholder}
             className="min-h-tap w-full rounded-lg border border-forest-900/25 bg-white py-2 pl-9 pr-3 text-base focus:border-gold-600 focus:outline-none focus:ring-2 focus:ring-gold-500/40"
@@ -95,14 +95,14 @@ export function SearchSelect({ label, value, options, onChange, placeholder = 'C
           </button>
         )}
         <ul role="listbox" className="divide-y divide-cream-200 overflow-hidden rounded-lg border border-cream-200 bg-white">
-          {shown.length === 0 && <li className="px-3 py-6 text-center text-sm text-ink/60">{emptyText}</li>}
+          {shown.length === 0 && <li className="px-3 py-6 text-center text-sm text-fg-muted">{emptyText}</li>}
           {shown.map((o) => (
             <li key={o.value} role="option" aria-selected={o.value === value}>
               <button type="button" disabled={o.disabled}
                 onClick={() => { onChange(o.value); setOpen(false); }}
                 className={clsx('tap w-full px-3 py-2.5 text-left hover:bg-forest-50 disabled:opacity-40', o.value === value && 'bg-forest-50 font-semibold')}>
                 <div className="text-base text-ink">{o.label}</div>
-                {o.sub && <div className="text-sm text-ink/55">{o.sub}</div>}
+                {o.sub && <div className="text-sm text-fg-muted">{o.sub}</div>}
               </button>
             </li>
           ))}

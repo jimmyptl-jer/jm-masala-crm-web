@@ -17,17 +17,17 @@ import type { QuoteStatus } from '@/lib/types';
 import { ApiError } from '@/lib/api';
 
 // ---- Button -----------------------------------------------------------------------------------
-// The five button looks. primary = main action (dark green), gold = highlight action, secondary = outlined,
+// The five button looks. primary = main action (paprika; one per screen), gold = the same paprika (old name), secondary = outlined,
 // ghost = text-only, danger = destructive (red).
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'gold';
 // Tailwind classes per variant, including hover/active/disabled colours. Brand colours (forest, gold,
 // cream) are defined in tailwind.config.js.
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-crm-blue text-white shadow-sm hover:brightness-110 active:bg-crm-navy disabled:opacity-50',
-  gold: 'bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 disabled:bg-emerald-600/50',
-  secondary: 'border border-slate-200 bg-white/75 text-[#17365f] shadow-sm hover:bg-white disabled:text-slate-400',
-  ghost: 'text-[#274768] hover:bg-white/70 disabled:text-slate-400',
-  danger: 'bg-red-700 text-white hover:bg-red-800 disabled:bg-red-700/50',
+  primary: 'bg-paprika text-white hover:bg-paprika-700 active:bg-paprika-800 disabled:bg-paprika-300',
+  gold: 'bg-paprika text-white hover:bg-paprika-700 active:bg-paprika-800 disabled:bg-paprika-300',
+  secondary: 'border border-line bg-surface text-ink hover:border-line-strong hover:bg-surface-hover disabled:text-ink-placeholder',
+  ghost: 'text-ink-secondary hover:bg-surface-hover hover:text-ink disabled:text-ink-placeholder',
+  danger: 'bg-danger text-white hover:opacity-90 disabled:opacity-50',
 };
 
 /**
@@ -58,7 +58,7 @@ export function Button({ variant = 'primary', loading, className, children, disa
 // ---- Form fields ------------------------------------------------------------------------------
 // Shared Tailwind classes for text inputs, selects and textareas: full width, 44 px tall, gold focus ring,
 // grey when disabled. The red border for errors is added by each component.
-const fieldBase = 'w-full min-h-tap rounded-lg border border-slate-200/90 bg-white/85 px-3 py-2 text-base text-ink placeholder:text-slate-400 focus:border-crm-blue focus:outline-none focus:ring-2 focus:ring-crm-blue/20 disabled:bg-slate-100 disabled:text-ink/60';
+const fieldBase = 'w-full min-h-tap rounded-lg border border-line-strong bg-surface px-3 py-2 text-base text-fg placeholder:text-fg-placeholder hover:border-line-strong focus:border-paprika focus:outline-none focus:ring-2 focus:ring-paprika/20 disabled:bg-surface-muted disabled:text-fg-muted';
 
 /**
  * Label + control + hint/error wrapper that every form control is built on.
@@ -76,13 +76,13 @@ export function Field({ label, error, hint, optional, children, className }:
   const id = useId();
   return (
     <div className={className}>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium text-forest-900">
+      <label htmlFor={id} className="mb-1.5 block text-xs font-bold text-ink-secondary">
         {label}
-        {optional && <span className="ml-1 font-normal text-ink/50">({t.common.optional})</span>}
+        {optional && <span className="ml-1 font-normal text-fg-muted">({t.common.optional})</span>}
       </label>
       {children(id)}
-      {hint && !error && <p className="mt-1 text-xs text-ink/60">{hint}</p>}
-      {error && <p role="alert" className="mt-1 text-sm text-red-700">{error}</p>}
+      {hint && !error && <p className="mt-1 text-xs text-fg-muted">{hint}</p>}
+      {error && <p role="alert" className="mt-1 text-xs text-danger-ink">{error}</p>}
     </div>
   );
 }
@@ -178,7 +178,7 @@ export function Segmented<T extends string>({ value, onChange, options, label, d
           <button
             key={o.value} type="button" role="radio" aria-checked={value === o.value} disabled={disabled}
             onClick={() => onChange(o.value)}
-            className={clsx('tap rounded-md px-3 py-2 text-base font-semibold transition-colors disabled:opacity-60', value === o.value ? 'bg-forest-900 text-white shadow' : 'text-forest-900 hover:bg-white/60')}
+            className={clsx('tap rounded-md px-3 py-2 text-base font-semibold transition-colors disabled:opacity-60', value === o.value ? 'bg-forest-900 text-white shadow' : 'text-forest-900 hover:bg-brand-50')}
           >{o.label}</button>
         ))}
       </div>
@@ -198,12 +198,12 @@ export function Card({ className, children }: { className?: string; children: Re
 // Badge colours per quote status: grey draft, blue sent, amber negotiating, green won, red lost, dark grey
 // expired.
 const STATUS_STYLE: Record<QuoteStatus, string> = {
-  draft: 'bg-stone-200 text-stone-800',
-  sent: 'bg-sky-100 text-sky-900',
-  negotiating: 'bg-amber-100 text-amber-900',
-  won: 'bg-green-100 text-green-900',
-  lost: 'bg-red-100 text-red-900',
-  expired: 'bg-zinc-300 text-zinc-800',
+  draft: 'bg-surface-muted text-fg-secondary',
+  sent: 'bg-info-bg text-info-ink',
+  negotiating: 'bg-warning-bg text-warning-ink',
+  won: 'bg-success-bg text-success-ink',
+  lost: 'bg-danger-bg text-danger-ink',
+  expired: 'bg-surface-muted text-fg-muted',
 };
 /**
  * Small coloured pill showing a quote status in words (labels come from t.common.status). Used in quote
@@ -211,7 +211,7 @@ const STATUS_STYLE: Record<QuoteStatus, string> = {
  * @param props.status — 'draft' | 'sent' | 'negotiating' | 'won' | 'lost' | 'expired'.
  */
 export function StatusBadge({ status }: { status: QuoteStatus }) {
-  return <span className={clsx('inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold', STATUS_STYLE[status])}>{t.common.status[status]}</span>;
+  return <span className={clsx('inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-bold', STATUS_STYLE[status])}><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />{t.common.status[status]}</span>;
 }
 
 /**
@@ -228,7 +228,7 @@ export function Spinner({ label = t.common.loading }: { label?: string }) {
  * @param props.title — the main sentence. @param props.children — optional smaller hint line below it.
  */
 export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
-  return <div className="px-4 py-10 text-center text-ink/70"><p className="font-medium text-forest-900">{title}</p>{children && <div className="mt-2 text-sm">{children}</div>}</div>;
+  return <div className="px-4 py-10 text-center text-fg-secondary"><p className="font-medium text-forest-900">{title}</p>{children && <div className="mt-2 text-sm">{children}</div>}</div>;
 }
 
 /**
@@ -266,8 +266,8 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   return (
     <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="font-sans text-2xl font-semibold leading-tight tracking-tight text-crm-ink md:text-3xl">{title}</h1>
-        {subtitle && <p className="mt-0.5 text-sm text-ink/60">{subtitle}</p>}
+        <h1 className="text-2xl font-bold leading-8 tracking-tight text-ink">{title}</h1>
+        {subtitle && <p className="mt-0.5 text-sm text-fg-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -288,8 +288,8 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
  *   the buyer and product forms; on a phone every sheet is full width anyway.
  * While open the page behind cannot scroll (body overflow is locked and restored on close).
  */
-export function Sheet({ open, onClose, title, children, footer, wide }:
-  { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
+export function Sheet({ open, onClose, title, children, footer, wide, huge }:
+  { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode; wide?: boolean; huge?: boolean }) {
   // While open: close on Escape and lock page scrolling. The cleanup (on close or unmount) removes the key
   // listener and restores the previous overflow value. Re-runs if onClose changes identity, which is
   // harmless.
@@ -304,13 +304,13 @@ export function Sheet({ open, onClose, title, children, footer, wide }:
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="absolute inset-0 bg-slate-950/35 backdrop-blur-sm" onClick={onClose} />
-      <div className={`glass-panel-strong relative flex max-h-[92dvh] w-full flex-col rounded-t-2xl md:rounded-2xl ${wide ? 'md:max-w-3xl' : 'md:max-w-lg'}`}>
+      <div className="absolute inset-0 bg-slate-950/35 " onClick={onClose} />
+      <div className={`glass-panel-strong relative flex max-h-[92dvh] w-full flex-col rounded-t-2xl md:rounded-2xl ${huge ? 'md:max-w-6xl' : wide ? 'md:max-w-3xl' : 'md:max-w-lg'}`}>
         <div className="flex items-center justify-between border-b border-slate-200/80 px-4 py-3">
           <h2 className="font-sans text-xl font-semibold tracking-tight text-crm-ink md:text-2xl">{title}</h2>
           <button type="button" onClick={onClose} aria-label={t.common.close} className="tap -mr-2 rounded-lg text-slate-600 hover:bg-slate-100"><X className="mx-auto h-5 w-5" /></button>
         </div>
-        <div className={`flex-1 overflow-y-auto px-4 py-4 ${wide ? 'md:px-6' : ''}`}>{children}</div>
+        <div className={`flex-1 overflow-y-auto px-4 py-4 ${wide || huge ? 'md:px-6' : ''}`}>{children}</div>
         {footer && <div className="safe-bottom border-t border-slate-200/80 px-4 py-3">{footer}</div>}
       </div>
     </div>

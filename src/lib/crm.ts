@@ -40,18 +40,18 @@ export function stageGroup(stage: Stage): StageGroup {
 
 /** Tailwind colour classes of the stage pill per group. */
 export const GROUP_STYLE: Record<StageGroup, string> = {
-  prospect: 'bg-zinc-200 text-zinc-900',
-  qualified: 'bg-sky-100 text-sky-900',
-  opportunity: 'bg-amber-100 text-amber-900',
-  customer: 'bg-emerald-100 text-emerald-900',
-  lost: 'bg-red-100 text-red-900',
+  prospect: 'bg-surface-muted text-fg-secondary',
+  qualified: 'bg-info-bg text-info-ink',
+  opportunity: 'bg-warning-bg text-warning-ink',
+  customer: 'bg-success-bg text-success-ink',
+  lost: 'bg-danger-bg text-danger-ink',
 };
 
 /** Soft background of a pipeline group's panel (written out in full so Tailwind generates every class). */
 export const GROUP_TINT: Record<StageGroup, string> = {
-  prospect: 'bg-zinc-100',
-  qualified: 'bg-sky-50',
-  opportunity: 'bg-amber-50',
-  customer: 'bg-emerald-50',
-  lost: 'bg-red-50',
+  prospect: 'bg-surface-muted',
+  qualified: 'bg-info-bg',
+  opportunity: 'bg-warning-bg',
+  customer: 'bg-success-bg',
+  lost: 'bg-danger-bg',
 };

@@ -12,6 +12,9 @@ import type {
 } from '../types';
 import { BUYERS, ME, PRODUCTS, QUOTES, SETTINGS, TEAM, USERS } from './data';
 
+/** Contacts logged on buyers during this session (the mock keeps them in memory only). */
+const BUYER_ACTIVITIES = new Map<string, BuyerDetail['activities']>();
+
 const STAGES: Stage[] = ['new_lead', 'contacted', 'qualified', 'requirements_received', 'quotation_sent', 'sample_requested',
   'sample_payment_pending', 'sample_dispatched', 'sample_approved', 'negotiation', 'po_received', 'won', 'lost'];
 
@@ -107,7 +110,8 @@ export async function mockRequest<T>(method: string, fullPath: string, body?: un
   if (seg[0] === 'products') {
     if (method === 'GET' && seg.length === 1) {
       const q = (params.get('q') ?? '').toLowerCase();
-      return out({ data: PRODUCTS.filter((p) => !q || p.name.toLowerCase().includes(q)) });
+      const archived = params.get('archived') ?? 'false';
+      return out({ data: PRODUCTS.filter((p) => (archived === 'all' || p.archived === (archived === 'true')) && (!q || p.name.toLowerCase().includes(q) || (p.grade ?? '').toLowerCase().includes(q))) });
     }
     if (method === 'GET' && seg[2] === 'price-hints') return out({ currency: params.get('currency') ?? 'USD', last_to_buyer: null, last_to_anyone: null, reference: null });
     if (method === 'POST' && seg.length === 1) {
@@ -118,7 +122,7 @@ export async function mockRequest<T>(method: string, fullPath: string, body?: un
     if (method === 'PATCH' && seg.length === 2) {
       const p = PRODUCTS.find((x) => x.id === seg[1]);
       if (!p) throw notFound();
-      Object.assign(p, b);
+      Object.assign(p, b, { updated_at: new Date().toISOString() });
       return out(p);
     }
   }
@@ -141,7 +145,7 @@ export async function mockRequest<T>(method: string, fullPath: string, body?: un
       if (!x) throw notFound();
       const mine = QUOTES.filter((q) => q.buyer_id === x.id);
       const detail: BuyerDetail = {
-        ...x, quotes: mine.map(listRow), activities: [], assigned_name: 'Demo User',
+        ...x, quotes: mine.map(listRow), activities: BUYER_ACTIVITIES.get(x.id) ?? [], assigned_name: 'Demo User',
         performance: { quotes_issued: mine.filter((q) => q.status !== 'draft').length, won: mine.filter((q) => q.status === 'won').length, lost: mine.filter((q) => q.status === 'lost').length, by_currency: [] },
       };
       return out(detail);
@@ -157,6 +161,17 @@ export async function mockRequest<T>(method: string, fullPath: string, body?: un
       Object.assign(x, b);
       return out(x);
     }
+  }
+
+  // POST /buyers/:id/activities: a logged contact (call, WhatsApp, e-mail, meeting, note). Updates the buyer's last contact,
+  // like the real API will (docs/DOMAIN-SPEC.md: activities with a buyer_id, buyers.last_contacted_at).
+  if (seg[0] === 'buyers' && seg.length === 3 && seg[2] === 'activities' && method === 'POST') {
+    const x = BUYERS.find((y) => y.id === seg[1]);
+    if (!x) throw notFound();
+    const entry = { id: newId('a'), kind: (b.kind as 'note') ?? 'note', body: String(b.body ?? ''), happened_at: new Date().toISOString(), quote_id: null, quote_no: null, user_name: ME.full_name };
+    BUYER_ACTIVITIES.set(x.id, [entry, ...(BUYER_ACTIVITIES.get(x.id) ?? [])]);
+    x.last_contact_at = entry.happened_at;
+    return out(x);
   }
 
   // ---- quotes ----

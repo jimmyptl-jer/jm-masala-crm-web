@@ -78,7 +78,7 @@ export function SendPicker({ buyer, value, onChange, withNone = false, directOnl
             />
             <span className="min-w-0">
               <span className="flex items-center gap-2 font-medium text-forest-900"><Icon className="h-4 w-4" aria-hidden />{label}</span>
-              <span className="block break-words text-sm text-ink/70">{hint}</span>
+              <span className="block break-words text-sm text-fg-secondary">{hint}</span>
             </span>
           </label>
         ))}

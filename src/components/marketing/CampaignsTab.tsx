@@ -34,8 +34,8 @@ export function CampaignsTab() {
       <EmailOffNote />
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 className="font-serif text-xl font-semibold text-forest-900 md:text-2xl">{m.campaignsHeading}</h2>
-          <p className="text-sm text-ink/60">{m.campaignsHint}</p>
+          <h2 className="text-[17px] font-bold leading-6 text-ink">{m.campaignsHeading}</h2>
+          <p className="text-sm text-fg-muted">{m.campaignsHint}</p>
         </div>
         <RouterButton to="/marketing/campaigns/new"><Plus className="h-5 w-5" aria-hidden />{m.newCampaign}</RouterButton>
       </div>
@@ -51,14 +51,14 @@ export function CampaignsTab() {
                   <span className="min-w-0 break-words text-lg font-semibold text-forest-900">{c.name}</span>
                   <StatusPill status={c.status} />
                 </div>
-                <div className="truncate text-sm text-ink/70">{readable(c.subject)}</div>
-                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-ink/80">
+                <div className="truncate text-sm text-fg-secondary">{readable(c.subject)}</div>
+                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-fg-secondary">
                   {c.status === 'draft' ? <span>{dateTime(c.created_at)}</span> : (
                     <>
                       <span>{c.status === 'sending' ? m.progress(c.sent + c.failed + c.skipped, c.total) : `${m.colSent} ${c.sent}`}</span>
                       {c.failed > 0 && <span className="font-semibold text-red-700">{m.colFailed} {c.failed}</span>}
                       <span>{m.colReplied} {c.replied}</span>
-                      <span className="text-ink/60">{dateTime(c.started_at ?? c.created_at)}</span>
+                      <span className="text-fg-muted">{dateTime(c.started_at ?? c.created_at)}</span>
                     </>
                   )}
                 </div>

@@ -94,9 +94,9 @@ export function usePdfFetcher() {
 // colour variants for links that look like buttons (only the three that are needed)
 type LinkVariant = 'primary' | 'gold' | 'secondary';
 const LINK_VARIANTS: Record<LinkVariant, string> = {
-  primary: 'bg-forest-900 text-white hover:bg-forest-800 active:bg-forest-950',
-  gold: 'bg-gold-500 text-forest-950 hover:bg-gold-300',
-  secondary: 'bg-white text-forest-900 border border-forest-900/25 hover:bg-forest-50',
+  primary: 'bg-paprika text-white hover:bg-paprika-700 active:bg-paprika-800',
+  gold: 'bg-paprika text-white hover:bg-paprika-700 active:bg-paprika-800',
+  secondary: 'border border-line bg-surface text-ink hover:border-line-strong hover:bg-surface-hover',
 };
 // same size/shape as ui Button so links and buttons line up in a row
 const LINK_BASE = 'tap inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-base font-semibold transition-colors';

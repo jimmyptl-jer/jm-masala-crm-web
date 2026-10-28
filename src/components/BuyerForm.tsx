@@ -187,8 +187,8 @@ export function BuyerForm({ initial, onSaved, onCancel, defaultType = 'export' }
 
       {/* Buyer CRM: pipeline, lead source, what the buyer wants, follow-up (always visible) */}
       <div className="border-t border-forest-900/15 pt-4">
-        <h3 className="font-serif text-xl font-semibold text-forest-900">{t.crm.moreDetails}</h3>
-        <p className="mb-3 text-sm text-ink/60">{t.crm.moreDetailsHint}</p>
+        <h3 className="text-[17px] font-bold leading-6 text-ink">{t.crm.moreDetails}</h3>
+        <p className="mb-3 text-sm text-fg-muted">{t.crm.moreDetailsHint}</p>
         <BuyerCrmFields f={f} set={set} errors={errors} />
       </div>
 

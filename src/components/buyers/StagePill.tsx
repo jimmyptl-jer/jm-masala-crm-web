@@ -1,17 +1,26 @@
 /**
- * Small coloured pill showing a buyer's pipeline stage (e.g. "Quotation sent"). The colour comes from the stage's
- * group (prospect grey, qualified blue, active opportunity amber, customer green, lost red) so the four kinds of
- * buyer can be told apart at a glance. Used by pages/Buyers.tsx and pages/BuyerDetail.tsx. No API calls.
+ * Small pill showing a buyer's pipeline stage (e.g. "Quotation sent"): a white pill with a coloured dot, the colour taken
+ * from the stage's group (prospect, qualified, active opportunity, customer, lost) in the design system's stage colours.
+ * Used by pages/Buyers.tsx, pages/Pipeline.tsx and pages/BuyerDetail.tsx. No API calls.
  */
-import clsx from 'clsx';
-import { GROUP_STYLE, stageGroup } from '@/lib/crm';
+import { stageColors } from '@/lib/design-tokens';
+import { stageGroup, type StageGroup } from '@/lib/crm';
 import type { Stage } from '@/lib/types';
 import { t } from '@/strings';
+
+const DOT: Record<StageGroup, string> = {
+  prospect: stageColors.enquiry,
+  qualified: stageColors.quotation,
+  opportunity: stageColors.negotiation,
+  customer: stageColors.fully_paid,
+  lost: stageColors.lost,
+};
 
 /** @param props.stage — the buyer's stage. */
 export function StagePill({ stage }: { stage: Stage }) {
   return (
-    <span className={clsx('inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold', GROUP_STYLE[stageGroup(stage)])}>
+    <span className="inline-flex h-6 items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 text-xs font-bold text-ink-secondary">
+      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: DOT[stageGroup(stage)] }} aria-hidden />
       {t.crm.stages[stage]}
     </span>
   );

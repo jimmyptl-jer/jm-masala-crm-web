@@ -1,84 +1,125 @@
 /**
- * Quotes list screen, route `/quotes` (see web/src/router.tsx). Lists, filters and exports quotes.
+ * Quotations list, route `/quotes` (alias `/quotations`; see web/src/router.tsx). See everything at a glance,
+ * filter, and open a quotation. Layout follows DESIGN_SYSTEM.md and docs/UI-SCREENS.md.
  *
- * API: GET /quotes (paged, react-query infinite key ['quotes', filters]); GET /quotes/export.xlsx (download);
- * GET /buyers and GET /products for the filter pickers (via useBuyers/useProducts).
- * Composes: QuoteRow (one list row), RouterButton, SearchSelect, and the ui kit (Button, Input, Segmented,
- * EmptyState, ErrorNote, PageHeader, Spinner, toast). Filters live in the URL query string (useSearchParams).
- * Linked from: Today's count tiles (`/quotes?status=...`) and the Layout navigation.
- * Money on each row is a decimal string formatted by QuoteRow; nothing is calculated here.
+ * API: GET /quotes (paged, react-query infinite key ['quotes', filters]); one GET /quotes?limit=1 per status card for
+ * the counts (key ['quotes', 'count', ...], so any quote change refreshes them); GET /quotes/export.xlsx (download); GET /buyers and GET /products for the
+ * Country and Product filters; GET /quotes/:id (to duplicate) and the PDF link (useful for "Download PDF").
+ * Filters live in the URL: ?status=&period=&from=&to=&product_id=&country=&q=. Period defaults to the current Indian
+ * financial year (Apr to Mar). Money on a row is a decimal string formatted by `money`; nothing is added up here, so
+ * the status cards show counts only (value totals need the API). The Quantity (MT) column and the item count under
+ * the quote number need the API to return them.
+ * The Country filter is not an API filter yet: while a country is chosen the list loads up to 500 quotes and is
+ * filtered in the browser (the cards then count from those rows).
  */
 import clsx from 'clsx';
-import { useInfiniteQuery } from '@tanstack/react-query';
-import { Download, Plus, Search, SlidersHorizontal } from 'lucide-react';
+import { useInfiniteQuery, useQueries } from '@tanstack/react-query';
+import { CalendarDays, Download, MoreHorizontal, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api, qs } from '@/lib/api';
+import { date, money, todayIST } from '@/lib/format';
 import { useBuyers, useDebounced, useProducts } from '@/lib/hooks';
-import type { QuoteList, QuoteStatus } from '@/lib/types';
-import { SearchSelect } from '@/components/SearchSelect';
-import { Button, EmptyState, ErrorNote, Input, PageHeader, Segmented, Spinner, errorMessage, useToast } from '@/components/ui';
+import type { QuoteDetail, QuoteList, QuoteListRow, QuoteStatus } from '@/lib/types';
+import { Button, EmptyState, ErrorNote, PageHeader, StatusBadge, errorMessage, useToast } from '@/components/ui';
+import { DuplicateSheet } from '@/components/quote/DuplicateSheet';
 import { QuoteRow } from '@/components/quote/QuoteRow';
-import { RouterButton } from '@/components/quote/shared';
+import { RouterButton, usePdfFetcher } from '@/components/quote/shared';
 import { t } from '@/strings';
 
-// rows fetched per request (GET /quotes `limit`); "Load more" fetches the next PAGE rows
+const s = t.quotes;
 const PAGE = 50;
-// status filter chips, in the order they are shown after "All" (same values as the API's `status` filter)
-const STATUSES: QuoteStatus[] = ['draft', 'sent', 'negotiating', 'won', 'lost', 'expired'];
-// URL params behind the collapsible "More filters" panel; used to count active extra filters
-const FILTER_KEYS = ['type', 'buyer_id', 'product_id', 'from', 'to'] as const;
+/** Rows loaded at once while the browser-side country filter is on. */
+const COUNTRY_LIMIT = 500;
 
-/**
- * Quotes screen (route `/quotes`): searchable, filterable list of every quote, with Excel export.
- *
- * What the user sees: a "New quote" button; a row of status chips (All, Draft, Sent, Negotiating, Won, Lost,
- * Expired); a search box (quote number or buyer name); a "More filters" button (with a count of active extra
- * filters), an "Export to Excel" button and, when any filter is on, "Clear all filters"; an optional
- * filter panel (type, buyer, product, date from/to; the dates match the quote's latest issue date, or its
- * creation date for a never-issued draft, in India time); then one QuoteRow per quote (two columns on md+),
- * a "Showing X of Y" line and a "Load more" button while more rows exist.
- *
- * The URL is the single source of truth for the filters: `?status=&type=&buyer_id=&product_id=&from=&to=&q=`.
- * That makes filtered lists linkable (Today's count tiles link here) and keeps the back button sane.
- * Changing a filter rewrites the URL with `replace`, so filtering does not pile up history entries.
- *
- * API:
- *  - GET /quotes?...filters&limit=50&offset=N via useInfiniteQuery, key ['quotes', filters]. Response is
- *    `{ data, total, limit, offset }`; the next page is requested while `offset + data.length < total`.
- *    Quote mutations elsewhere invalidate ['quotes'], which refetches this list.
- *  - GET /quotes/export.xlsx?...same filters (no paging; the API returns up to 5000 rows) downloaded through
- *    `api.download` because a plain link cannot send the bearer token.
- *  - GET /buyers and GET /products (archived=all, so old quotes can still be filtered by an archived buyer
- *    or product) feed the two pickers. Keys ['buyers', opts] and ['products', opts].
- *
- * Local state: `showMore` (filter panel open; starts open if the URL already has extra filters), `exporting`
- * (blocks double export clicks), `search` (text in the search box, see the debounce note below).
- */
+/** The five status cards. `value` is the API status filter ('' = all). */
+const CARDS: { value: QuoteStatus | ''; label: string; tone: string }[] = [
+  { value: '', label: s.cardAll, tone: 'text-accent-ink' },
+  { value: 'draft', label: s.cardDraft, tone: 'text-fg-secondary' },
+  { value: 'sent', label: s.cardSent, tone: 'text-info-ink' },
+  { value: 'won', label: s.cardAccepted, tone: 'text-success-ink' },
+  { value: 'expired', label: s.cardExpired, tone: 'text-danger-ink' },
+];
+const STATUS_OPTIONS: QuoteStatus[] = ['draft', 'sent', 'negotiating', 'won', 'lost', 'expired'];
+
+/** Indian financial year (April to March) containing `ymd`: its dates and a label like '2026-27'. */
+function fyOf(ymd: string, back = 0) {
+  const [y = 0, m = 1] = ymd.split('-').map(Number);
+  const start = (m >= 4 ? y : y - 1) - back;
+  return { from: `${start}-04-01`, to: `${start + 1}-03-31`, label: `${start}-${String(start + 1).slice(2)}` };
+}
+
+/** Whole days from `a` to `b` (both 'YYYY-MM-DD'). */
+const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
+
+/** The row's "..." menu: Duplicate, Download PDF, and the two actions that wait for later features. */
+function RowMenu({ q }: { q: QuoteListRow }) {
+  const [open, setOpen] = useState(false);
+  const [dup, setDup] = useState<QuoteDetail | null>(null);
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+  const fetchPdf = usePdfFetcher();
+  const label = q.number ?? s.draftNumber;
+  const item = 'flex w-full items-center rounded-md px-3 py-2 text-left text-sm hover:bg-brand-50 disabled:cursor-not-allowed disabled:text-fg-placeholder disabled:hover:bg-transparent';
+
+  const duplicate = async () => {
+    setOpen(false);
+    setBusy(true);
+    try { setDup(await api.get<QuoteDetail>(`/quotes/${q.id}`)); } catch { toast(s.loadFailedDetail, 'error'); } finally { setBusy(false); }
+  };
+  const pdf = async () => {
+    setOpen(false);
+    if (q.current_revision === null) return;
+    try { window.open((await fetchPdf(q.id, q.current_revision)).url, '_blank', 'noopener'); } catch (e) { toast(errorMessage(e) || s.pdfFailed, 'error'); }
+  };
+
+  return (
+    <div className="relative" onClick={(e) => e.stopPropagation()}>
+      <button type="button" aria-label={s.menuLabel(label)} aria-expanded={open} disabled={busy} onClick={() => setOpen((v) => !v)}
+        className="tap grid place-items-center rounded-lg text-fg-muted hover:bg-surface-muted"><MoreHorizontal className="h-4 w-4" /></button>
+      {open && (
+        <>
+          <button type="button" aria-label="Close menu" className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} />
+          <div role="menu" className="absolute right-0 z-20 mt-1 w-52 rounded-xl border border-line-strong bg-surface p-1 shadow-pop">
+            <button type="button" role="menuitem" className={item} onClick={() => void duplicate()}>{s.menuDuplicate}</button>
+            <button type="button" role="menuitem" className={item} disabled={q.current_revision === null} title={q.current_revision === null ? s.menuNoPdf : undefined} onClick={() => void pdf()}>{s.menuPdf}</button>
+            <button type="button" role="menuitem" className={item} disabled title={s.menuPiNote}>{s.menuPi}</button>
+            <button type="button" role="menuitem" className={item} disabled title={s.menuArchiveNote}>{s.menuArchive}</button>
+          </div>
+        </>
+      )}
+      {dup && <DuplicateSheet open onClose={() => setDup(null)} quote={dup} />}
+    </div>
+  );
+}
+
+/** Valid-until cell: the date, orange when 3 days or fewer remain, red when expired. */
+function Valid({ q, today }: { q: QuoteListRow; today: string }) {
+  if (!q.valid_until) return <span className="text-fg-placeholder">{'—'}</span>;
+  const left = daysBetween(today, q.valid_until);
+  const expired = q.status === 'expired' || left < 0;
+  const soon = !expired && left <= 3 && (q.status === 'sent' || q.status === 'negotiating');
+  return (
+    <div className={clsx(expired ? 'text-danger-ink' : soon ? 'text-warning-ink' : 'text-fg-secondary')}>
+      <div className={clsx((expired || soon) && 'font-bold')}>{date(q.valid_until)}</div>
+      {expired ? <div className="text-xs">{s.expiredWord}</div> : soon ? <div className="text-xs">{s.inDays(left)}</div> : null}
+    </div>
+  );
+}
+
+/** Quotations screen. Local state: the search box text, which mirrors the `q` URL param. */
 export default function Quotes() {
-  // URL search params = filter state; every read below falls back to '' (meaning "no filter")
   const [params, setParams] = useSearchParams();
   const toast = useToast();
+  const navigate = useNavigate();
+  const today = todayIST();
   const status = params.get('status') ?? '';
-  const type = params.get('type') ?? '';
-  const buyerId = params.get('buyer_id') ?? '';
   const productId = params.get('product_id') ?? '';
-  const from = params.get('from') ?? '';
-  const to = params.get('to') ?? '';
+  const country = params.get('country') ?? '';
   const urlQ = params.get('q') ?? '';
-
-  // how many of the "More filters" fields are set; shown in the button label
-  const activeExtra = FILTER_KEYS.filter((k) => params.get(k)).length;
-  // open the panel straight away when arriving via a link that already carries extra filters
-  const [showMore, setShowMore] = useState(activeExtra > 0);
+  const period = params.get('period') ?? 'fy';
   const [exporting, setExporting] = useState(false);
 
-  /**
-   * Writes one or more filter values into the URL.
-   * @param changes - map of param name -> new value; an empty string REMOVES that param.
-   * Uses the functional form of `setParams` so several quick changes do not overwrite each other, and
-   * `replace: true` so each change replaces the history entry instead of adding one.
-   */
   const setParam = (changes: Record<string, string>) =>
     setParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -86,161 +127,202 @@ export default function Quotes() {
       return next;
     }, { replace: true });
 
-  // Search box: `search` is what the user typed; it is copied into the URL (`q`) 300 ms after typing stops,
-  // so we do not send a request per keystroke.
+  // search box <-> URL (same two-effect pattern as before: typing is debounced, outside changes are copied in)
   const [search, setSearch] = useState(urlQ);
   const debounced = useDebounced(search, 300);
-  // last `q` value this component wrote to the URL; lets us tell our own URL updates from outside ones
   const written = useRef(urlQ);
-  // Effect 1 (box -> URL): when the debounced text differs from the URL's `q`, remember it in `written` and
-  // write it to the URL (trimmed). Runs only when `debounced` changes (deps lint rule disabled on purpose).
   useEffect(() => {
     const v = debounced.trim();
     if (v !== urlQ) { written.current = v; setParam({ q: v }); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced]);
-  // Effect 2 (URL -> box): if `q` changed from OUTSIDE (back button, "Clear all filters", a link), copy it
-  // into the box. The `written` check skips our own writes, so typing is never overwritten mid-keystroke.
   useEffect(() => {
     if (urlQ !== written.current) { written.current = urlQ; setSearch(urlQ); }
   }, [urlQ]);
 
-  // the filter set sent to the API and used in the react-query key; rebuilt only when a filter changes
-  const filters = useMemo(
-    () => ({ status, type, buyer_id: buyerId, product_id: productId, from, to, q: urlQ }),
-    [status, type, buyerId, productId, from, to, urlQ],
-  );
+  // period -> from/to
+  const fy = fyOf(today);
+  const lastFy = fyOf(today, 1);
+  const range = period === 'all' ? { from: '', to: '' }
+    : period === 'lfy' ? { from: lastFy.from, to: lastFy.to }
+    : period === 'custom' ? { from: params.get('from') ?? '', to: params.get('to') ?? '' }
+    : { from: fy.from, to: fy.to };
 
-  // paged list: `pageParam` is the row offset of the page to fetch (0, 50, 100, ...)
-  const list = useInfiniteQuery({
-    queryKey: ['quotes', filters],
-    initialPageParam: 0,
-    queryFn: ({ pageParam }) => api.get<QuoteList>(`/quotes${qs({ ...filters, limit: PAGE, offset: pageParam })}`),
-    getNextPageParam: (last) => (last.offset + last.data.length < last.total ? last.offset + last.limit : undefined),
-  });
-
-  // all loaded pages flattened into one array; `total` (matching rows overall) is read from the first page
-  const rows = list.data?.pages.flatMap((p) => p.data) ?? [];
-  const total = list.data?.pages[0]?.total ?? 0;
-
-  // pickers include archived buyers/products ('all') so quotes for them can still be found
   const buyers = useBuyers({ archived: 'all' });
   const products = useProducts({ archived: 'all' });
-  // buyers/products -> {value,label,sub} options for SearchSelect (sub line: city, country / grade)
-  const buyerOpts = useMemo(() => (buyers.data ?? []).map((b) => ({ value: b.id, label: b.company_name, sub: [b.city, b.country].filter(Boolean).join(', ') || undefined })), [buyers.data]);
-  const productOpts = useMemo(() => (products.data ?? []).map((p) => ({ value: p.id, label: p.name, sub: p.grade ?? undefined })), [products.data]);
+  const countries = useMemo(() => [...new Set((buyers.data ?? []).map((b) => b.country).filter((c): c is string => !!c))].sort(), [buyers.data]);
+  const countryOf = useMemo(() => new Map((buyers.data ?? []).map((b) => [b.id, b.country ?? b.state ?? ''])), [buyers.data]);
 
-  // shows the "Clear all filters" button when anything (status, search or an extra filter) is set
-  const anyFilter = Boolean(status || urlQ || activeExtra);
-  /** Clears the search box and removes every filter param from the URL (one history-neutral replace). */
+  // everything except the status goes to the API; with a country chosen the status is applied in the browser too
+  const clientMode = !!country;
+  const base = { product_id: productId, from: range.from, to: range.to, q: urlQ };
+  const filters = useMemo(() => ({ ...base, status: clientMode ? '' : status }), [productId, range.from, range.to, urlQ, status, clientMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const list = useInfiniteQuery({
+    queryKey: ['quotes', filters, clientMode],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => api.get<QuoteList>(`/quotes${qs({ ...filters, limit: clientMode ? COUNTRY_LIMIT : PAGE, offset: pageParam })}`),
+    getNextPageParam: (last) => (last.offset + last.data.length < last.total ? last.offset + last.limit : undefined),
+  });
+  const loaded = list.data?.pages.flatMap((p) => p.data) ?? [];
+  const rows = clientMode
+    ? loaded.filter((r) => countryOf.get(r.buyer_id) === country && (!status || r.status === status))
+    : loaded;
+  const total = clientMode ? rows.length : (list.data?.pages[0]?.total ?? 0);
+
+  // card counts: one tiny request per status (same filters), or counted from the loaded rows in country mode
+  const counts = useQueries({
+    queries: CARDS.map((c) => ({
+      queryKey: ['quotes', 'count', { ...base, status: c.value }],
+      queryFn: () => api.get<QuoteList>(`/quotes${qs({ ...base, status: c.value, limit: 1, offset: 0 })}`).then((r) => r.total),
+      enabled: !clientMode,
+    })),
+  });
+  const countOf = (i: number): string => {
+    const c = CARDS[i]!;
+    if (clientMode) {
+      const inCountry = loaded.filter((r) => countryOf.get(r.buyer_id) === country);
+      return String(c.value ? inCountry.filter((r) => r.status === c.value).length : inCountry.length);
+    }
+    return counts[i]?.data === undefined ? '—' : String(counts[i]!.data);
+  };
+
+  const anyFilter = Boolean(status || urlQ || productId || country || period !== 'fy');
   const clearAll = () => { setSearch(''); setParams({}, { replace: true }); };
 
-  /**
-   * "Export to Excel" button handler: downloads the CURRENT filtered list as `quotes.xlsx`.
-   * Calls GET /quotes/export.xlsx with the same `filters` as the list (no limit/offset; the API caps at 5000
-   * rows). On success a toast confirms; on failure an error toast shows the API message or a generic one.
-   * Double-click guard: returns immediately while `exporting` is true, and the button is disabled+spinning.
-   */
   const exportXlsx = async () => {
     if (exporting) return;
     setExporting(true);
     try {
       await api.download(`/quotes/export.xlsx${qs(filters)}`, 'quotes.xlsx');
-      toast(t.quotes.exported);
+      toast(s.exported);
     } catch (e) {
-      toast(errorMessage(e) || t.quotes.exportFailed, 'error');
+      toast(errorMessage(e) || s.exportFailed, 'error');
     } finally {
       setExporting(false);
     }
   };
 
-  // status chips: an "All" chip (empty value clears the filter) followed by one chip per status
-  const chips: { value: string; label: string }[] = [{ value: '', label: t.quotes.all }, ...STATUSES.map((s) => ({ value: s, label: t.common.status[s] }))];
+  const open = (q: QuoteListRow) => navigate(q.latest_state === 'draft' && q.quote_no === null ? `/quotes/${q.id}/edit` : `/quotes/${q.id}`);
+  const ctl = 'h-11 rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg hover:border-line-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25';
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
-        title={t.quotes.title}
-        subtitle={list.isSuccess ? t.quotes.total(total) : undefined}
-        actions={<RouterButton to="/quotes/new" variant="gold"><Plus className="h-5 w-5" aria-hidden />{t.quotes.newQuote}</RouterButton>}
+        title={s.pageTitle}
+        subtitle={s.pageSubtitle}
+        actions={(
+          <>
+            <Button variant="secondary" onClick={() => void exportXlsx()} loading={exporting} disabled={exporting}>{!exporting && <Download className="h-4 w-4" aria-hidden />}{s.export}</Button>
+            <RouterButton to="/quotes/new" variant="gold">{s.newQuotation}</RouterButton>
+          </>
+        )}
       />
 
-      {/* status chips: scroll sideways on phones (negative margin lets them reach the screen edge) */}
-      <div role="group" aria-label={t.quotes.statusFilter} className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1">
-        {chips.map((c) => (
-          <button
-            key={c.value || 'all'} type="button" aria-pressed={status === c.value} onClick={() => setParam({ status: c.value })}
-            className={clsx('tap shrink-0 rounded-full border px-4 py-2 text-base font-semibold',
-              status === c.value ? 'border-forest-900 bg-forest-900 text-white' : 'border-forest-900/25 bg-white text-forest-900 hover:bg-forest-50')}
-          >{c.label}</button>
-        ))}
+      {/* status cards: count each; the active card is brand brown with white text; click to filter */}
+      <div role="group" aria-label={s.cardsLabel} className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+        {CARDS.map((c, i) => {
+          const active = status === c.value;
+          return (
+            <button key={c.value || 'all'} type="button" aria-pressed={active} onClick={() => setParam({ status: c.value })}
+              className={clsx('tap rounded-xl border p-4 text-left shadow-card transition-colors', active ? 'border-paprika bg-paprika text-white' : 'border-line bg-surface hover:border-line-strong')}>
+              <span className={clsx('block text-[11px] font-bold uppercase tracking-[0.06em]', active ? 'text-paprika-100' : c.tone)}>{c.label}</span>
+              <span className="mt-1 block text-[28px] font-bold leading-8 tabular-nums">{countOf(i)}</span>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="relative mb-3">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-ink/40" aria-hidden />
-        <input
-          type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.quotes.search} aria-label={t.quotes.searchLabel}
-          className="min-h-tap w-full rounded-lg border border-forest-900/25 bg-white py-2 pl-10 pr-3 text-base placeholder:text-ink/40 focus:border-gold-600 focus:outline-none focus:ring-2 focus:ring-gold-500/40"
-        />
+      {/* filter bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="relative block min-w-[220px] flex-1">
+          <span className="sr-only">{s.searchLabel}</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted" aria-hidden />
+          <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={s.searchPlaceholder} className={clsx(ctl, 'w-full pl-9')} />
+        </label>
+        <select aria-label={s.statusFilter2} value={status} onChange={(e) => setParam({ status: e.target.value })} className={ctl}>
+          <option value="">{s.allStatuses}</option>
+          {STATUS_OPTIONS.map((v) => <option key={v} value={v}>{t.common.status[v]}</option>)}
+        </select>
+        <select aria-label={s.country} value={country} onChange={(e) => setParam({ country: e.target.value })} className={ctl}>
+          <option value="">{s.allCountries}</option>
+          {countries.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select aria-label={s.productFilter} value={productId} onChange={(e) => setParam({ product_id: e.target.value })} className={ctl}>
+          <option value="">{s.allProducts}</option>
+          {(products.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}{p.grade ? ` – ${p.grade}` : ''}</option>)}
+        </select>
+        <label className="relative">
+          <span className="sr-only">{s.period}</span>
+          <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-muted" aria-hidden />
+          <select value={period} onChange={(e) => setParam({ period: e.target.value === 'fy' ? '' : e.target.value, from: '', to: '' })} className={clsx(ctl, 'pl-9')}>
+            <option value="fy">{s.periodFy(fy.label)}</option>
+            <option value="lfy">{s.periodLastFy(lastFy.label)}</option>
+            <option value="all">{s.periodAll}</option>
+            <option value="custom">{s.periodCustom}</option>
+          </select>
+        </label>
+        {period === 'custom' && (
+          <>
+            <input type="date" aria-label={t.quotes.dateFrom} value={range.from} max={range.to || undefined} onChange={(e) => setParam({ from: e.target.value })} className={ctl} />
+            <input type="date" aria-label={t.quotes.dateTo} value={range.to} min={range.from || undefined} onChange={(e) => setParam({ to: e.target.value })} className={ctl} />
+          </>
+        )}
+        {anyFilter && <Button variant="ghost" onClick={clearAll}>{s.clearAllFilters}</Button>}
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-2">
-        <Button variant="secondary" aria-expanded={showMore} onClick={() => setShowMore((v) => !v)}>
-          <SlidersHorizontal className="h-4 w-4" aria-hidden />
-          {showMore ? t.quotes.lessFilters : t.quotes.moreFilters}{activeExtra > 0 && ` (${activeExtra})`}
-        </Button>
-        <Button variant="secondary" onClick={() => void exportXlsx()} loading={exporting} disabled={exporting}>
-          {!exporting && <Download className="h-4 w-4" aria-hidden />}
-          {exporting ? t.quotes.exporting : t.quotes.exportExcel}
-        </Button>
-        {anyFilter && <Button variant="ghost" onClick={clearAll}>{t.quotes.clearFilters}</Button>}
-      </div>
+      {list.isError && <ErrorNote error={list.error} onRetry={() => void list.refetch()} />}
 
-      {showMore && (
-        <div className="card mb-4 space-y-3 p-4">
-          <Segmented<string>
-            label={t.quotes.type} value={type} onChange={(v) => setParam({ type: v })}
-            options={[{ value: '', label: t.quotes.anyType }, { value: 'export', label: t.common.type.export }, { value: 'domestic', label: t.common.type.domestic }]}
-          />
-          <div className="flex items-end gap-2">
-            <div className="min-w-0 flex-1">
-              <SearchSelect label={t.quotes.buyer} value={buyerId} options={buyerOpts} onChange={(v) => setParam({ buyer_id: v })}
-                placeholder={t.quotes.chooseBuyer} searchPlaceholder={t.quotes.buyerSearch} emptyText={t.common.noResults} />
-            </div>
-            {buyerId && <Button variant="ghost" onClick={() => setParam({ buyer_id: '' })}>{t.quotes.clear}</Button>}
-          </div>
-          <div className="flex items-end gap-2">
-            <div className="min-w-0 flex-1">
-              <SearchSelect label={t.quotes.product} value={productId} options={productOpts} onChange={(v) => setParam({ product_id: v })}
-                placeholder={t.quotes.chooseProduct} searchPlaceholder={t.quotes.productSearch} emptyText={t.common.noResults} />
-            </div>
-            {productId && <Button variant="ghost" onClick={() => setParam({ product_id: '' })}>{t.quotes.clear}</Button>}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Input type="date" label={t.quotes.dateFrom} value={from} max={to || undefined} onChange={(e) => setParam({ from: e.target.value })} />
-            <Input type="date" label={t.quotes.dateTo} value={to} min={from || undefined} onChange={(e) => setParam({ to: e.target.value })} />
-          </div>
+      {list.isLoading && (
+        <div className="space-y-2" role="status" aria-label={t.common.loading}>
+          {[0, 1, 2, 3].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl border border-line-strong bg-surface-muted" />)}
         </div>
       )}
 
-      {list.isLoading && <Spinner />}
-      {list.isError && <ErrorNote error={list.error} onRetry={() => void list.refetch()} />}
-
       {list.isSuccess && rows.length === 0 && (
-        <EmptyState title={t.quotes.emptyTitle}>{t.quotes.emptyHint}</EmptyState>
+        <div className="glass-panel p-6">
+          {anyFilter ? (
+            <EmptyState title={s.filteredEmpty}>{s.filteredEmptyHint}</EmptyState>
+          ) : (
+            <EmptyState title={s.emptyTitle}>{s.emptyHint}</EmptyState>
+          )}
+        </div>
       )}
 
       {rows.length > 0 && (
         <>
-          <ul className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-            {rows.map((q) => <li key={q.id}><QuoteRow q={q} /></li>)}
-          </ul>
-          <div className="mt-4 flex flex-col items-center gap-2">
-            <p className="text-sm text-ink/65" aria-live="polite">{t.quotes.showing(rows.length, total)}</p>
-            {list.hasNextPage && (
-              <Button variant="secondary" className="w-full max-w-xs" onClick={() => void list.fetchNextPage()} loading={list.isFetchingNextPage}>
-                {t.quotes.loadMore}
-              </Button>
+          {/* wide screens: a table; click a row to open it */}
+          <div className="glass-panel hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[760px] text-left text-[13.5px]">
+              <thead className="bg-surface-muted">
+                <tr className="text-[11px] font-bold uppercase tracking-[0.06em] text-fg-muted">
+                  <th className="px-4 py-2.5">{s.colQuoteNo}</th><th className="px-4 py-2.5">{s.colBuyer}</th>
+                  <th className="px-4 py-2.5 text-right">{s.colValue}</th><th className="px-4 py-2.5">{s.colValid}</th><th className="px-4 py-2.5">{s.colStatus}</th><th className="w-10 px-2 py-2.5"><span className="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {rows.map((q) => (
+                  <tr key={q.id} tabIndex={0} onClick={() => open(q)} onKeyDown={(e) => { if (e.key === 'Enter') open(q); }}
+                    aria-label={s.rowAria(q.number ?? s.draftNumber, q.buyer_name)} className="cursor-pointer align-top hover:bg-brand-50 focus-visible:bg-brand-50">
+                    <td className="px-4 py-3"><div className="font-bold text-fg">{q.number ?? s.draftNumber}</div><div className="max-w-[16rem] truncate text-xs text-fg-muted">{q.products || s.noProducts}</div></td>
+                    <td className="px-4 py-3"><div className="font-bold text-fg">{q.buyer_name}</div><div className="text-xs text-fg-muted">{countryOf.get(q.buyer_id) || '—'}</div></td>
+                    <td className="num whitespace-nowrap px-4 py-3 font-bold text-fg">{money(q.grand_total, q.currency)}</td>
+                    <td className="px-4 py-3"><Valid q={q} today={today} /></td>
+                    <td className="px-4 py-3"><StatusBadge status={q.status} /></td>
+                    <td className="px-2 py-2"><RowMenu q={q} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* phones: one card per quotation */}
+          <ul className="grid gap-3 md:hidden">{rows.map((q) => <li key={q.id}><QuoteRow q={q} /></li>)}</ul>
+
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-sm text-fg-muted" aria-live="polite">{s.showing(rows.length, total)}{clientMode && ` · ${s.countryNote}`}</p>
+            {!clientMode && list.hasNextPage && (
+              <Button variant="secondary" className="w-full max-w-xs" onClick={() => void list.fetchNextPage()} loading={list.isFetchingNextPage}>{s.loadMore}</Button>
             )}
           </div>
         </>

@@ -135,7 +135,7 @@ function Composer({ draftId }: { draftId: string | undefined }) {
             <button
               type="button" disabled={i > step && !savedId} onClick={() => { if (i <= step || savedId) setStep(i); }} aria-current={i === step ? 'step' : undefined}
               className={clsx('flex min-h-[48px] w-full flex-col items-center justify-center rounded-lg border px-1 py-1 text-center text-xs font-semibold md:flex-row md:gap-2 md:text-sm',
-                i === step ? 'border-forest-900 bg-forest-900 text-white' : i < step ? 'border-forest-700/40 bg-forest-50 text-forest-900' : 'border-forest-900/20 bg-white text-ink/60')}
+                i === step ? 'border-forest-900 bg-forest-900 text-white' : i < step ? 'border-forest-700/40 bg-forest-50 text-forest-900' : 'border-forest-900/20 bg-white text-fg-muted')}
             >
               <span className="text-base font-bold">{i + 1}</span><span className="leading-tight">{label}</span>
             </button>

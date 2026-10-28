@@ -63,7 +63,7 @@ export function FileUploadSheet({ open, onClose, onUploaded }: { open: boolean; 
         <div>
           <input ref={input} type="file" accept="application/pdf,image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => choose(e.target.files?.[0])} />
           <Button type="button" variant="secondary" className="w-full" onClick={() => input.current?.click()}>{file ? file.name : m.chooseFile}</Button>
-          {file && <p className="mt-1 text-sm text-ink/60">{fileSize(file.size)}</p>}
+          {file && <p className="mt-1 text-sm text-fg-muted">{fileSize(file.size)}</p>}
         </div>
         <Input label={m.fileNameLabel} value={name} onChange={(e) => setName(e.target.value)} />
         <Select label={m.fileKindLabel} value={kind} onChange={(e) => setKind(e.target.value as AssetKind)}>
@@ -96,8 +96,8 @@ export function LibraryTab() {
     <div className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 className="font-serif text-xl font-semibold text-forest-900 md:text-2xl">{m.filesTabHeading}</h2>
-          <p className="max-w-2xl text-sm text-ink/60">{m.filesTabHint}</p>
+          <h2 className="text-[17px] font-bold leading-6 text-ink">{m.filesTabHeading}</h2>
+          <p className="max-w-2xl text-sm text-fg-muted">{m.filesTabHint}</p>
         </div>
         <Button onClick={() => setUploading(true)}><Plus className="h-5 w-5" aria-hidden />{m.uploadFile}</Button>
       </div>
@@ -111,7 +111,7 @@ export function LibraryTab() {
               {a.content_type === 'application/pdf' ? <FileText className="h-6 w-6 shrink-0 text-forest-800" aria-hidden /> : <ImageIcon className="h-6 w-6 shrink-0 text-forest-800" aria-hidden />}
               <div className="min-w-0 flex-1">
                 <div className="break-words font-semibold text-forest-900">{a.name}</div>
-                <div className="text-sm text-ink/60">{[m.fileKinds[a.kind], fileSize(a.size_bytes), date(a.created_at)].join(' · ')}</div>
+                <div className="text-sm text-fg-muted">{[m.fileKinds[a.kind], fileSize(a.size_bytes), date(a.created_at)].join(' · ')}</div>
               </div>
               {a.url && <a href={a.url} target="_blank" rel="noopener noreferrer" className="tap flex items-center rounded-lg px-2 text-sm font-semibold text-forest-800 underline">{m.openFile}</a>}
               <Button variant="secondary" loading={remove.isPending && remove.variables === a.id} onClick={() => remove.mutate(a.id)}>{m.removeFile}</Button>

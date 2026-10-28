@@ -61,8 +61,8 @@ export function TemplatesTab() {
     <div className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 className="font-serif text-xl font-semibold text-forest-900 md:text-2xl">{m.templatesHeading}</h2>
-          <p className="text-sm text-ink/60">{m.templatesHint}</p>
+          <h2 className="text-[17px] font-bold leading-6 text-ink">{m.templatesHeading}</h2>
+          <p className="text-sm text-fg-muted">{m.templatesHint}</p>
         </div>
         <Button onClick={() => open('new')}><Plus className="h-5 w-5" aria-hidden />{m.newTemplate}</Button>
       </div>
@@ -78,8 +78,8 @@ export function TemplatesTab() {
                   <span className="text-lg font-semibold text-forest-900">{x.name}</span>
                   <span className="rounded-full bg-cream-100 px-2.5 py-0.5 text-xs font-semibold text-forest-900">{m.kind[x.kind]}</span>
                 </div>
-                <div className="truncate text-sm font-medium text-ink/80">{x.subject}</div>
-                <p className="mt-1 line-clamp-2 whitespace-pre-line text-sm text-ink/60">{x.body}</p>
+                <div className="truncate text-sm font-medium text-fg-secondary">{x.subject}</div>
+                <p className="mt-1 line-clamp-2 whitespace-pre-line text-sm text-fg-muted">{x.body}</p>
               </button>
             </li>
           ))}

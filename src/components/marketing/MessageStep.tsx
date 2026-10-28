@@ -46,8 +46,8 @@ export function MessageStep({ form, set, errors }: { form: CampaignInput; set: (
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <h2 className="font-serif text-xl font-semibold text-forest-900 md:text-2xl">{m.chooseTemplate}</h2>
-        <p className="mb-3 text-sm text-ink/60">{m.chooseTemplateHint}</p>
+        <h2 className="text-[17px] font-bold leading-6 text-ink">{m.chooseTemplate}</h2>
+        <p className="mb-3 text-sm text-fg-muted">{m.chooseTemplateHint}</p>
         {templates.isPending ? <Spinner /> : templates.isError ? <ErrorNote error={templates.error} onRetry={() => void templates.refetch()} /> : (
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3" role="radiogroup" aria-label={m.chooseTemplate}>
             {(templates.data ?? []).map((x) => (
@@ -56,7 +56,7 @@ export function MessageStep({ form, set, errors }: { form: CampaignInput; set: (
                 className={clsx('min-h-[64px] rounded-lg border px-3 py-2 text-left', form.template_id === x.id ? 'border-forest-700 bg-forest-50 ring-2 ring-forest-700/30' : 'border-forest-900/20 bg-white hover:bg-forest-50')}
               >
                 <span className="block font-semibold text-forest-900">{x.name}</span>
-                <span className="block text-xs text-ink/60">{m.kind[x.kind]}</span>
+                <span className="block text-xs text-fg-muted">{m.kind[x.kind]}</span>
               </button>
             ))}
             <button

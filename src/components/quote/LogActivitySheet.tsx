@@ -114,7 +114,7 @@ function LogForm({ onClose, quoteId, subtitle, initialKind = 'call' }: Props) {
       }
     >
       <div className="space-y-3">
-        {subtitle && <p className="text-sm text-ink/70">{t.quoteDetail.log.forQuote(subtitle)}</p>}
+        {subtitle && <p className="text-sm text-fg-secondary">{t.quoteDetail.log.forQuote(subtitle)}</p>}
 
         <div>
           <div id="log-kind" className="mb-1 text-sm font-medium text-forest-900">{t.quoteDetail.log.kind}</div>
@@ -139,7 +139,7 @@ function LogForm({ onClose, quoteId, subtitle, initialKind = 'call' }: Props) {
         />
 
         <div>
-          <div className="mb-1 text-sm text-ink/60">{t.quoteDetail.log.followupHint}</div>
+          <div className="mb-1 text-sm text-fg-muted">{t.quoteDetail.log.followupHint}</div>
           <FollowupPicker value={next} onChange={setNext} error={fieldErr.next_followup} />
         </div>
 

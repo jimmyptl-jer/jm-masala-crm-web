@@ -114,15 +114,15 @@ export function CompanyPanel({ settings }: { settings: Settings }) {
         <div className="mb-1 text-sm font-medium text-forest-900">{s.logo}</div>
         <div className="flex items-center gap-4">
           <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-lg border border-cream-200 bg-cream-50">
-            {settings.logo_url ? <img src={settings.logo_url} alt={s.logoAlt} className="h-full w-full object-contain" /> : <ImagePlus className="h-7 w-7 text-ink/30" aria-hidden />}
+            {settings.logo_url ? <img src={settings.logo_url} alt={s.logoAlt} className="h-full w-full object-contain" /> : <ImagePlus className="h-7 w-7 text-fg-muted" aria-hidden />}
           </div>
           <div className="min-w-0 flex-1 space-y-1">
-            {!settings.logo_url && <p className="text-sm text-ink/60">{s.logoNone}</p>}
+            {!settings.logo_url && <p className="text-sm text-fg-muted">{s.logoNone}</p>}
             <input ref={fileRef} type="file" accept="image/png,image/jpeg" className="sr-only" tabIndex={-1} aria-hidden onChange={(e) => void pickLogo(e.target.files?.[0])} />
             <Button variant="secondary" loading={logoBusy} onClick={() => fileRef.current?.click()}>{settings.logo_url ? s.logoChange : s.logoChoose}</Button>
           </div>
         </div>
-        <p className="mt-1 text-xs text-ink/60">{s.logoHint}</p>
+        <p className="mt-1 text-xs text-fg-muted">{s.logoHint}</p>
         {logoError && <p role="alert" className="mt-1 text-sm text-red-700">{logoError}</p>}
         {logoFatal !== null && <div className="mt-2"><ErrorNote error={logoFatal} /></div>}
       </div>

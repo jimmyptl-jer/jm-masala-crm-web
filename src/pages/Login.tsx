@@ -28,10 +28,10 @@ export function AuthShell({ title, children }: { title: string; children: ReactN
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-forest-900 px-4 py-8">
       <img src="/logo.png" alt="" className="h-20 w-20 rounded-xl bg-cream-50 object-contain p-1" />
-      <p className="mt-3 font-serif text-3xl font-semibold text-white">{t.common.appName}</p>
+      <p className="mt-3 font-display font-bold text-white text-3xl leading-9">{t.common.appName}</p>
       <p className="mt-1 text-center text-sm text-gold-300">{s.subtitle}</p>
       <Card className="mt-6 w-full max-w-sm bg-cream-50 p-5">
-        <h1 className="mb-4 font-serif text-2xl font-semibold text-forest-900">{title}</h1>
+        <h1 className="mb-4 text-2xl font-bold leading-8 tracking-tight text-ink">{title}</h1>
         {children}
       </Card>
     </div>
@@ -154,7 +154,7 @@ export default function Login() {
           <p role="status" className="mb-4 rounded-lg bg-forest-50 p-3 text-base text-forest-900">{s.resetSent}</p>
         ) : (
           <form onSubmit={sendReset} className="space-y-4" noValidate>
-            <p className="text-sm text-ink/70">{s.resetHelp}</p>
+            <p className="text-sm text-fg-secondary">{s.resetHelp}</p>
             <Input label={s.email} type="email" inputMode="email" autoComplete="username" autoCapitalize="none" spellCheck={false}
               value={email} onChange={(e) => setEmail(e.target.value)} error={fieldErrors.email} />
             <Button type="submit" className="w-full" loading={busy}>{s.resetSend}</Button>
