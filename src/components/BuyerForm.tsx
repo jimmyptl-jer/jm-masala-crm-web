@@ -127,7 +127,7 @@ export function BuyerForm({ initial, onSaved, onCancel, defaultType = 'export' }
       const body = {
         ...f,
         gstin: text('gstin').trim().toUpperCase(),
-        interested_products: (f.interested_products ?? []).filter((name) => isApprovedProduct(name.split(' (')[0] ?? name)),
+        interested_products: (f.interested_products ?? []).filter((name) => isApprovedProduct(name)),
       };
       const saved = initial
         ? await api.patch<Buyer>(`/buyers/${initial.id}`, body)

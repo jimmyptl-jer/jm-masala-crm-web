@@ -16,7 +16,7 @@ import { useAuth } from '@/auth/AuthProvider';
 import { Fact, Stat, Thumb, group, refLine, uniq } from '@/components/products/shared';
 import { RouterButton } from '@/components/quote/shared';
 import { EmptyState, ErrorNote, Spinner } from '@/components/ui';
-import { date, qty } from '@/lib/format';
+import { date, money, qty } from '@/lib/format';
 import { useProducts } from '@/lib/hooks';
 import { t } from '@/strings';
 
@@ -63,12 +63,12 @@ export default function ProductDetail() {
 
   const gradesTable = (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[760px] text-left text-sm">
+      <table className="w-full min-w-[860px] text-left text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
             <th className="px-2 py-2 font-medium">#</th><th className="px-2 py-2 font-medium">{s.colGrade}</th><th className="px-2 py-2 font-medium">{s.colPurity}</th>
             <th className="px-2 py-2 font-medium">{s.colMoisture}</th><th className="px-2 py-2 font-medium">{s.colCleaning}</th><th className="px-2 py-2 font-medium">{s.colUnit}</th>
-            <th className="px-2 py-2 font-medium">{s.colGst}</th><th className="px-2 py-2 font-medium">{s.colStatus}</th>
+            <th className="px-2 py-2 text-right font-medium">{s.colRate}</th><th className="px-2 py-2 font-medium">{s.colGst}</th><th className="px-2 py-2 font-medium">{s.colStatus}</th>
           </tr>
         </thead>
         <tbody>
@@ -83,9 +83,12 @@ export default function ProductDetail() {
               <td className="px-2 py-2.5 text-slate-700">{p.moisture ?? '—'}</td>
               <td className="px-2 py-2.5 text-slate-700">{p.cleaning ?? '—'}</td>
               <td className="px-2 py-2.5 text-slate-700">{t.common.unit[p.unit]}</td>
-              <td className="px-2 py-2.5 tabular-nums text-slate-700">{qty(p.gst_rate)}%</td>
+              <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums text-slate-700">
+                {p.ref_rate_usd || p.ref_rate_inr ? <>{p.ref_rate_usd && <div>{money(p.ref_rate_usd, 'USD')}</div>}{p.ref_rate_inr && <div>{money(p.ref_rate_inr, 'INR')}</div>}<div className="text-xs text-slate-500">{s.perKg}</div></> : '—'}
+              </td>
+              <td className="px-2 py-2.5 tabular-nums text-slate-700">{p.gst_rate == null ? '—' : `${qty(p.gst_rate)}%`}</td>
               <td className="px-2 py-2.5">
-                <span className={clsx('rounded-full px-2.5 py-0.5 text-xs font-semibold', p.archived ? 'bg-zinc-200 text-zinc-800' : 'bg-emerald-50 text-emerald-800')}>{p.archived ? s.archivedBadge : s.statusActive}</span>
+                <span className={clsx('rounded-full px-2.5 py-0.5 text-xs font-semibold', p.archived ? 'bg-zinc-200 text-zinc-800' : p.status === 'draft' ? 'bg-warning-bg text-warning-ink' : 'bg-emerald-50 text-emerald-800')}>{p.archived ? s.archivedBadge : p.status === 'draft' ? s.draftBadge : s.statusActive}</span>
               </td>
             </tr>
           ))}
@@ -113,7 +116,7 @@ export default function ProductDetail() {
             <span className="font-medium text-crm-ink">{p.grade ?? g.name}</span>
             <span className="text-right tabular-nums text-slate-700">
               {refLine(p) || <span className="text-fg-muted">{s.noRefRate}</span>}
-              <span className="block text-xs text-slate-500">{s.perUnit(t.common.unit[p.unit])}</span>
+              <span className="block text-xs text-slate-500">{s.perKg}</span>
             </span>
           </li>
         ))}
@@ -136,7 +139,7 @@ export default function ProductDetail() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="break-words text-2xl font-bold tracking-tight text-crm-ink md:text-3xl">{g.name}</h1>
-                <span className={clsx('rounded-full px-2.5 py-0.5 text-xs font-semibold', g.archived ? 'bg-zinc-200 text-zinc-800' : 'bg-emerald-50 text-emerald-800')}>{g.archived ? s.archivedBadge : s.statusActive}</span>
+                <span className={clsx('rounded-full px-2.5 py-0.5 text-xs font-semibold', g.archived ? 'bg-zinc-200 text-zinc-800' : g.rows.every((r) => r.status === 'draft') ? 'bg-warning-bg text-warning-ink' : 'bg-emerald-50 text-emerald-800')}>{g.archived ? s.archivedBadge : g.rows.every((r) => r.status === 'draft') ? s.draftBadge : s.statusActive}</span>
               </div>
               {isAdmin && <RouterButton to={editTo} variant="secondary"><Pencil className="h-4 w-4" aria-hidden />{s.editProduct}</RouterButton>}
             </div>
@@ -171,7 +174,7 @@ export default function ProductDetail() {
             <dl className="divide-y divide-slate-100">
               <Fact label={s.fName} value={g.name} />
               <Fact label={s.fUnit} value={uniq(g.rows.map((p) => t.common.unit[p.unit])).join(', ')} />
-              <Fact label={s.fGst} value={uniq(g.rows.map((p) => `${qty(p.gst_rate)}%`)).join(', ')} />
+              <Fact label={s.fGst} value={uniq(g.rows.map((p) => (p.gst_rate == null ? '—' : `${qty(p.gst_rate)}%`))).join(', ')} />
               <Fact label={s.fHs} value={uniq(g.rows.map((p) => p.hs_code)).join(', ')} />
               <Fact label={s.fHsn} value={uniq(g.rows.map((p) => p.hsn_code)).join(', ')} />
             </dl>

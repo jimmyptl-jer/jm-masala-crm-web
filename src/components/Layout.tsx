@@ -15,7 +15,7 @@
  */
 import clsx from 'clsx';
 import { useQuery } from '@tanstack/react-query';
-import { Banknote, Bell, Columns3, FileSpreadsheet, FileText, FlaskConical, LayoutDashboard, LogOut, MoreHorizontal, Package, PackageCheck, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings as SettingsIcon, Ship, Users, Workflow } from 'lucide-react';
+import { Banknote, Bell, Columns3, FileSpreadsheet, FileText, FlaskConical, Handshake, IndianRupee, Inbox, LayoutDashboard, LogOut, MoreHorizontal, Package, PackageCheck, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings as SettingsIcon, Ship, Users, Workflow } from 'lucide-react';
 import { useEffect, useMemo, useState, type ElementType, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
@@ -23,7 +23,7 @@ import { CommandPalette } from '@/components/CommandPalette';
 import { useMediaQuery } from '@/components/quote/shared';
 import { Sheet } from '@/components/ui';
 import { api } from '@/lib/api';
-import { AUTH_BYPASS, MOCK_API } from '@/lib/config';
+import { API_URL, AUTH_BYPASS, MOCK_API } from '@/lib/config';
 import { useBuyerSummary } from '@/lib/hooks';
 import type { QuoteList } from '@/lib/types';
 import { t } from '@/strings';
@@ -35,15 +35,15 @@ interface Item { to: string; label: string; icon: ElementType; end?: boolean; co
 
 /** Breadcrumb label of the first path segment. */
 const SECTION: Record<string, string> = {
-  '': n.today, pipeline: n.pipeline, buyers: n.buyers, quotes: n.quotes, quotations: n.quotes, 'follow-ups': n.followups,
-  products: n.products, orders: n.orders, settings: n.settings,
+  '': n.today, pipeline: n.pipeline, buyers: n.buyers, inquiries: n.inquiries, quotes: n.quotes, quotations: n.quotes, 'follow-ups': n.followups,
+  products: n.products, 'daily-rates': n.dailyRates, partners: n.partners, orders: n.orders, settings: n.settings,
 };
 
 /** Shell around every signed-in screen. Local state: sidebar preference, palette, the "+ New" and More menus, the Create sheet. */
 export function Layout() {
   const { me, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const wide = useMediaQuery('(min-width: 1280px)');
   const [pref, setPref] = useState<'collapsed' | 'expanded' | null>(() => {
     try { const v = localStorage.getItem('jm.nav'); return v === 'collapsed' || v === 'expanded' ? v : null; } catch { return null; }
@@ -69,8 +69,8 @@ export function Layout() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-  // menus close when the page changes
-  useEffect(() => { setNewOpen(false); setMoreOpen(false); }, [pathname]);
+  // menus close when the page or its query string changes ("Add buyer" only changes the query string when you are already on Buyers)
+  useEffect(() => { setNewOpen(false); setMoreOpen(false); }, [pathname, search]);
 
   const groups: { label?: string; items: Item[] }[] = [
     { items: [
@@ -79,6 +79,7 @@ export function Layout() {
       { to: '/buyers', label: n.buyers, icon: Users },
     ] },
     { label: n.groupSales, items: [
+      { to: '/inquiries', label: n.inquiries, icon: Inbox },
       { to: '/quotes', label: n.quotes, icon: FileText, count: drafts || undefined },
       { to: '/proforma', label: n.proforma, icon: FileSpreadsheet, soon: true },
       { to: '/samples', label: n.samples, icon: FlaskConical, soon: true },
@@ -88,6 +89,8 @@ export function Layout() {
       { to: '/shipments', label: n.shipments, icon: Ship, soon: true },
       { to: '/payments', label: n.payments, icon: Banknote, soon: true },
       { to: '/products', label: n.products, icon: Package },
+      { to: '/daily-rates', label: n.dailyRates, icon: IndianRupee },
+      { to: '/partners', label: n.partners, icon: Handshake },
       { to: '/orders', label: n.orders, icon: PackageCheck },
     ] },
   ];
@@ -131,9 +134,9 @@ export function Layout() {
     <div className="min-h-dvh md:flex">
       {/* Desktop sidebar (hidden below md) */}
       <aside className={clsx('sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-line bg-surface transition-[width] md:flex', collapsed ? 'w-16' : 'w-60')}>
-        <div className={clsx('flex h-14 items-center gap-2', collapsed ? 'justify-center' : 'px-4')}>
-          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-paprika font-display text-sm font-bold text-white" aria-hidden>JM</div>
-          {!collapsed && <span className="flex-1 font-display text-xl font-bold text-ink">JM Masala</span>}
+        <div className={clsx('flex h-16 items-center gap-2', collapsed ? 'justify-center' : 'px-4')}>
+          <img src="/logo.png" alt={collapsed ? t.common.companyName : ''} title={collapsed ? t.common.companyName : undefined} className="h-10 w-10 shrink-0 object-contain" />
+          {!collapsed && <span className="flex-1 font-display text-base font-bold leading-tight text-ink">{t.common.companyName}</span>}
           {!collapsed && <button type="button" onClick={toggle} aria-label={n.collapse} title={n.collapse} className="tap grid place-items-center rounded-md text-ink-muted hover:bg-surface-hover hover:text-ink"><PanelLeftClose className="h-4 w-4" strokeWidth={1.75} /></button>}
         </div>
 
@@ -152,7 +155,7 @@ export function Layout() {
               {g.items.map(entry)}
             </div>
           ))}
-          {MOCK_API && !collapsed && <div className="mt-4 rounded-md border border-line bg-surface-muted px-3 py-2 text-xs text-ink-muted">{AUTH_BYPASS ? 'Demo workspace · sample data' : 'Sample data workspace'}</div>}
+          {MOCK_API && !collapsed && <div className="mt-4 rounded-md border border-line bg-surface-muted px-3 py-2 text-xs text-ink-muted">{API_URL ? n.liveApi : AUTH_BYPASS ? 'Demo workspace · sample data' : 'Sample data workspace'}</div>}
         </nav>
 
         <div className="border-t border-line p-2">
@@ -189,6 +192,8 @@ export function Layout() {
                 <div role="menu" className="absolute right-0 z-20 mt-1 w-48 rounded-lg border border-line bg-surface p-1 shadow-pop">
                   <button type="button" role="menuitem" onClick={() => navigate('/quotes/new')} className="flex w-full rounded-md px-3 py-2 text-left text-sm text-ink-secondary hover:bg-surface-hover hover:text-ink">{n.newQuotation}</button>
                   <button type="button" role="menuitem" onClick={() => navigate('/buyers?new=1')} className="flex w-full rounded-md px-3 py-2 text-left text-sm text-ink-secondary hover:bg-surface-hover hover:text-ink">{n.addBuyer}</button>
+                  <button type="button" role="menuitem" onClick={() => navigate('/inquiries/new')} className="flex w-full rounded-md px-3 py-2 text-left text-sm text-ink-secondary hover:bg-surface-hover hover:text-ink">{n.newInquiry}</button>
+                  <button type="button" role="menuitem" onClick={() => navigate('/partners?new=1')} className="flex w-full rounded-md px-3 py-2 text-left text-sm text-ink-secondary hover:bg-surface-hover hover:text-ink">{n.addPartner}</button>
                 </div>
               </>
             )}
@@ -198,8 +203,8 @@ export function Layout() {
         {/* Phone header (hidden from md up) */}
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-surface px-4 text-ink md:hidden">
           <div className="flex items-center gap-2">
-            <div className="grid h-7 w-7 place-items-center rounded-md bg-paprika font-display text-sm font-bold text-white" aria-hidden>JM</div>
-            <span className="font-display text-xl font-bold">JM Masala</span>
+            <img src="/logo.png" alt="" className="h-9 w-9 shrink-0 object-contain" />
+            <span className="font-display text-sm font-bold leading-tight">{t.common.companyName}</span>
             {MOCK_API && <span className="rounded-full border border-line bg-surface-muted px-2 py-0.5 text-[10px] font-bold text-ink-muted">Sample data</span>}
           </div>
           <div className="flex items-center">
@@ -236,6 +241,8 @@ export function Layout() {
         <div className="space-y-2">
           <Link to="/quotes/new" onClick={() => setCreateOpen(false)} className="tap flex items-center gap-3 rounded-lg border border-line px-4 py-3 text-sm font-bold text-ink hover:bg-surface-hover"><FileText className="h-4 w-4 text-ink-muted" aria-hidden />{n.newQuotation}</Link>
           <Link to="/buyers?new=1" onClick={() => setCreateOpen(false)} className="tap flex items-center gap-3 rounded-lg border border-line px-4 py-3 text-sm font-bold text-ink hover:bg-surface-hover"><Users className="h-4 w-4 text-ink-muted" aria-hidden />{n.addBuyer}</Link>
+          <Link to="/inquiries/new" onClick={() => setCreateOpen(false)} className="tap flex items-center gap-3 rounded-lg border border-line px-4 py-3 text-sm font-bold text-ink hover:bg-surface-hover"><Inbox className="h-4 w-4 text-ink-muted" aria-hidden />{n.newInquiry}</Link>
+          <Link to="/partners?new=1" onClick={() => setCreateOpen(false)} className="tap flex items-center gap-3 rounded-lg border border-line px-4 py-3 text-sm font-bold text-ink hover:bg-surface-hover"><Handshake className="h-4 w-4 text-ink-muted" aria-hidden />{n.addPartner}</Link>
         </div>
       </Sheet>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} pages={pages} />

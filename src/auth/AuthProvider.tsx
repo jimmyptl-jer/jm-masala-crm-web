@@ -13,7 +13,7 @@ import type { Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError, api } from '@/lib/api';
-import { AUTH_BYPASS, AUTH_LOST_EVENT, SIMPLE_AUTH, TOKEN_KEY } from '@/lib/config';
+import { AUTH_BYPASS } from '@/lib/config';
 import { supabase } from '@/lib/supabase';
 import type { Me } from '@/lib/types';
 import { Spinner } from '@/components/ui';
@@ -43,10 +43,8 @@ interface AuthState {
   isAdmin: boolean;
   /** Set when the account signed in but has no profile row yet. */
   profileError: string | null;
-  /** True when someone is signed in (Supabase session, or a stored token in SIMPLE_AUTH mode). */
+  /** True when someone is signed in (a Supabase session). */
   signedIn: boolean;
-  /** SIMPLE_AUTH only: sign in with e-mail and password; throws ApiError (401 = wrong details). */
-  signInSimple: (email: string, password: string) => Promise<void>;
   /**
    * Ends the Supabase session. The SIGNED_OUT listener in AuthProvider then clears me and the whole query
    * cache.
@@ -94,8 +92,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
-  // SIMPLE_AUTH: is a login token stored? (the API checks it; a rejected token fires AUTH_LOST_EVENT)
-  const [hasToken, setHasToken] = useState(() => { try { return SIMPLE_AUTH && !!localStorage.getItem(TOKEN_KEY); } catch { return false; } });
   const qc = useQueryClient();
 
   /**
@@ -106,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * sets the generic "could not load" message.
    * Stable (useCallback with no deps) so the effect below does not re-run. Also exposed as refreshMe.
    */
-  const loadMe = useCallback(async () => {
+  const loadMe = useCallback(async (retry = true): Promise<void> => {
     try {
       setMe(await api.get<Me>('/me'));
       setProfileError(null);
@@ -115,8 +111,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // for a moment. Use the built-in admin; each page shows its own "try again" if its data cannot load.
       if (AUTH_BYPASS) { setMe(BYPASS_ME); setProfileError(null); return; }
       setMe(null);
-      if (e instanceof ApiError && e.code === 'no_profile') setProfileError(t.login.noProfile);
-      else if (!(e instanceof ApiError && e.status === 401)) setProfileError(t.common.loadFailed);
+      // 403 account_inactive: signed up and waiting for approval (or deactivated)
+      if (e instanceof ApiError && e.code === 'account_inactive') { setProfileError(t.login.pending); return; }
+      // 403 forbidden: signed in with Supabase but not known to the CRM yet (just signed up): ask for access once, which records the
+      // person as pending, then look again
+      if (e instanceof ApiError && e.status === 403 && retry) {
+        try { await api.post('/signup/request', {}); return loadMe(false); } catch { /* fall through to the message below */ }
+      }
+      if (e instanceof ApiError && e.status === 403) setProfileError(t.login.noProfile);
+      // 401 from GET /me while Supabase accepts the session: the API rejects Supabase's token (wrong Supabase project, or an old API copy)
+      else if (e instanceof ApiError && e.status === 401) setProfileError(t.login.apiRejected);
+      else setProfileError(t.common.loadFailed);
     }
   }, []);
 
@@ -127,12 +132,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // unsubscribes.
   useEffect(() => {
     let alive = true;
-    if (SIMPLE_AUTH && !AUTH_BYPASS) {
-      const lost = () => { setHasToken(false); setMe(null); qc.clear(); };
-      window.addEventListener(AUTH_LOST_EVENT, lost);
-      (hasToken ? loadMe() : Promise.resolve()).finally(() => { if (alive) setLoading(false); });
-      return () => { alive = false; window.removeEventListener(AUTH_LOST_EVENT, lost); };
-    }
     if (AUTH_BYPASS) {
       // no Supabase session: the API identifies everyone as the built-in admin
       loadMe().finally(() => { if (alive) setLoading(false); });
@@ -151,30 +150,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === 'SIGNED_IN' && s) setTimeout(() => void loadMe(), 0);
     });
     return () => { alive = false; sub.subscription.unsubscribe(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- hasToken is only the start-up value
   }, [loadMe, qc]);
 
   // Memoised so consumers re-render only when something they read actually changed.
   // signOut simply asks Supabase to end the session; the SIGNED_OUT listener above does the clean-up.
   const value = useMemo<AuthState>(() => ({
     session, me, loading, profileError, isAdmin: me?.role === 'admin',
-    signedIn: SIMPLE_AUTH ? hasToken : !!session,
-    signInSimple: async (email: string, password: string) => {
-      const r = await api.post<{ token: string }>('/auth/login', { email, password });
-      try { localStorage.setItem(TOKEN_KEY, r.token); } catch { /* storage unavailable */ }
-      setHasToken(true);
-      await loadMe();
-    },
-    signOut: async () => {
-      if (SIMPLE_AUTH) {
-        try { localStorage.removeItem(TOKEN_KEY); } catch { /* storage unavailable */ }
-        setHasToken(false); setMe(null); qc.clear();
-        return;
-      }
-      await supabase.auth.signOut();
-    },
+    signedIn: !!session,
+    signOut: async () => { await supabase.auth.signOut(); },
     refreshMe: loadMe,
-  }), [session, me, loading, profileError, hasToken, loadMe, qc]);
+  }), [session, me, loading, profileError, loadMe]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

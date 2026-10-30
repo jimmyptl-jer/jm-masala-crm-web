@@ -2,12 +2,14 @@
  * Client for the quotes API: every screen talks to the backend through `api` (get / post / put / patch /
  * del / upload / download), plus the helpers `qs` (query strings), `pdfUrl` (signed PDF link) and the error
  * class `ApiError`.
- * The real API is paused (see docs/ARCHITECTURE.md): `request` answers from the in-memory sample data in
- * lib/mock instead of calling the network. To bring the API back, replace `request` with a fetch call to the API (the old version is on the git branch backup/api-full).
+ * Mixed mode: with VITE_API_URL set, the calls listed in lib/config.ts (LIVE_ROUTES) go to the real API with the login
+ * token (localStorage, key jm-login-token); every other call still answers from the in-memory sample data in lib/mock.
  * Errors: a failed call throws an ApiError built from { error: { code, message, fields? } }.
  * Used by lib/hooks.ts, auth/AuthProvider.tsx, pages/*, components/*.
  */
 
+import { API_URL, isLive } from './config';
+import { supabase } from './supabase';
 import { mockRequest } from './mock';
 
 /**
@@ -25,14 +27,43 @@ export class ApiError extends Error {
   }
 }
 
+/** Signs out only when Supabase confirms the current session is no longer valid (a network failure does not sign anyone out). */
+async function endSessionIfInvalid(): Promise<void> {
+  const { error } = await supabase.auth.getUser();
+  if (error && [400, 401, 403].includes(error.status ?? 0)) await supabase.auth.signOut();
+}
+
 /**
  * The one place every JSON and form request goes through; `api.get` etc. are thin wrappers.
  * @param method — HTTP method. @param path — path starting with '/', query string included (see qs()).
  * @param body — object, or a FormData for uploads (the mock does not read files).
  * @returns the answer typed as T. @throws ApiError, e.g. 501 'needs_api' for anything the mock does not cover.
  */
-async function request<T>(method: string, path: string, body?: unknown, _isForm = false): Promise<T> {
-  return mockRequest<T>(method, path, body instanceof FormData ? undefined : body);
+async function request<T>(method: string, path: string, body?: unknown, isForm = false): Promise<T> {
+  if (!isLive(method, path)) return mockRequest<T>(method, path, body instanceof FormData ? undefined : body);
+
+  // real API: the Supabase access token of the signed-in person (the client renews it before it expires)
+  const token = (await supabase.auth.getSession()).data.session?.access_token ?? null;
+  const res = await fetch(`${API_URL}${path}`, {
+    method,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(body !== undefined && !isForm ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
+  });
+  if (res.status === 204) return undefined as T;
+  const ct = res.headers.get('content-type') ?? '';
+  const data = ct.includes('application/json') ? await res.json().catch(() => null) : null;
+  if (!res.ok) {
+    // a token the API rejects: end the Supabase session (back to the sign-in screen) only when Supabase itself says the session is
+    // invalid. If Supabase still accepts it, the API is the problem (for example it points at another Supabase project or is an old
+    // copy), and signing out would also log out every other tab that shares this browser's session.
+    if (res.status === 401 && token) void endSessionIfInvalid();
+    const e = data?.error;
+    throw new ApiError(res.status, e?.code ?? 'error', e?.message ?? `Request failed (${res.status})`, e?.fields);
+  }
+  return data as T;
 }
 
 /**

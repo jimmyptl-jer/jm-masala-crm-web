@@ -7,7 +7,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "e2e": "playwright test --headed",
+    "e2e:fast": "playwright test",
+    "e2e:api": "playwright test --project=api",
+    "typecheck:e2e": "tsc -p e2e/tsconfig.json",
+    "e2e:report": "playwright show-report e2e-report"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
@@ -19,11 +24,17 @@
     "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@faker-js/faker": "^9.3.0",
+    "@playwright/test": "^1.49.1",
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "autoprefixer": "^10.6.1",
+    "decimal.js": "^10.6.0",
+    "fast-check": "^4.10.2",
+    "pdf-parse": "^2.4.5",
     "postcss": "^8.5.29",
     "tailwindcss": "^3.4.19",
     "typescript": "^7.0.2",

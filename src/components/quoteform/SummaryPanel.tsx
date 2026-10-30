@@ -15,6 +15,8 @@ import { t } from '@/strings';
 
 const s = t.quoteForm;
 const isZero = (v: string) => /^-?0*\.?0*$/.test(v);
+/** '83.4500' -> '83.45'. */
+const shownRate = (rate: string) => rate.replace(/(\.\d\d)0+$/, '$1');
 
 /** Margin check colour: green at 8% or more, orange from 3% up to 8%, red below 3%. */
 export function marginTone(pct: string): 'ok' | 'warn' | 'low' {
@@ -60,6 +62,13 @@ export function SummaryPanel({ calc, currency, type, pending, calcError, hasInpu
       <p className={clsx('mt-1 text-[28px] font-bold leading-8 tabular-nums', calc ? 'text-ink' : 'text-ink-placeholder', pending && 'opacity-60')} aria-live="polite">{calc ? money(calc.grand_total, cur) : money('0', cur)}</p>
       <p className="mt-1 text-sm text-ink-muted">{calcError && !calc ? calcError : qtyLine || (hasInput ? '' : s.addProductsHint)}{pending && <Loader2 className="ml-2 inline h-3 w-3 animate-spin" aria-hidden />}</p>
       {calc && calcError && <p className="mt-1 text-xs text-danger-ink">{calcError}</p>}
+      {/* the total at today's dollar rate; the API works it out (nothing is calculated here) */}
+      {calc?.equivalent && (
+        <p className="mt-1 text-sm font-medium text-ink-secondary tabular-nums">
+          {calc.equivalent.currency === 'INR' ? s.equivalentInr(money(calc.equivalent.amount, 'INR', { symbol: false }), shownRate(calc.equivalent.rate)) : s.equivalentUsd(money(calc.equivalent.amount, 'USD', { symbol: false }), shownRate(calc.equivalent.rate))}
+        </p>
+      )}
+      {calc && !calc.equivalent && (calc.currency === 'USD' || calc.currency === 'INR') && Number(calc.grand_total) > 0 && <p className="mt-1 text-xs text-warning-ink">{s.noRateHint}</p>}
 
       {calc && (
         <dl className="mt-3 space-y-1">

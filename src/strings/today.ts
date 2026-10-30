@@ -15,6 +15,16 @@ export const today = {
   kpiNew: 'New enquiries', kpiNewSub: (n: number) => `${n} not replied`, kpiNewNone: 'all replied',
   kpiCold: 'Going cold', kpiColdSub: 'no contact 14+ days',
 
+  // the dashboard tabs (the cards above open them)
+  tabsLabel: 'Dashboard sections', tabChase: 'Chase list', tabOverdue: 'Overdue', tabNew: 'New enquiries', tabCold: 'Going cold', tabRates: 'Daily rates',
+  openCard: (label: string) => `Show ${label}`,
+  overdueTitle: 'Overdue follow-ups', overdueHint: 'Follow-ups that should have happened already, oldest first.',
+  newTitle: 'New enquiries', newHint: 'Buyers at the new-lead stage. Reply first, then send a quotation.',
+  newEmpty: 'No new enquiries', newEmptyHint: 'Every enquiry has moved on.',
+  colEnquiry: 'Enquiry date', colReplied: 'Reply', replied: 'Replied', notReplied: 'Not replied',
+  coldHint: 'Nobody has spoken to these buyers for 14 days or more.', colSilent: 'No contact for', coldDaysLong: (n: number) => `${n} days`,
+  ratesTitle: 'Daily rates',
+
   // chase list
   chaseTitle: 'Chase list',
   filters: { all: 'All', overdue: 'Overdue', quote: 'Quotes', sample: 'Samples', new: 'New' },
@@ -49,4 +59,12 @@ export const today = {
   save: 'Save', saving: 'Saving…', cancel: 'Cancel',
   savedToast: 'Contact logged', saveFailed: 'Could not save. Please try again.',
   buyerRequired: 'Choose a buyer.', outcomeRequired: 'Write what happened.',
+
+  // today's dollar rate (top of the dashboard)
+  fxTitle: "Today's dollar rate", fxPer: 'per US$1', fxNotSet: 'Not set yet',
+  fxNotSetHint: 'Enter it once a day. Every quote uses it for the rupee value and the margin.',
+  fxSetBy: (name: string, when: string) => `Set by ${name} on ${when}`,
+  fxStale: (when: string) => `Last set on ${when}. Please enter today's rate.`,
+  fxLabel: 'Rupees for US$1', fxSave: 'Update rate', fxSaved: 'Dollar rate updated',
+  fxInvalid: 'Enter the rupees for one dollar, for example 83.45.', fxFailed: 'Could not save the rate.',
 };

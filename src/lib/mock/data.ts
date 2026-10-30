@@ -3,7 +3,7 @@
  * quotes, rates and totals are not real, and the totals are typed in by hand because the web app never does
  * money maths (only the future API will). Replace this file's reader with real API calls step by step.
  */
-import type { Buyer, Product, QuoteDetail, QuoteLine, Revision, Settings, Me, TeamMember, UserRow, Currency, QuoteStatus, QuoteType } from '../types';
+import type { Buyer, Inquiry, InquiryLine, Product, QuoteDetail, QuoteLine, Revision, Settings, Me, TeamMember, UserRow, Currency, QuoteStatus, QuoteType } from '../types';
 
 const day = (offset: number) => {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
@@ -12,7 +12,7 @@ const day = (offset: number) => {
 const iso = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString();
 
 export const ME: Me = { id: 'u1', email: 'demo@example.com', role: 'admin', full_name: 'Demo User', phone: null };
-export const USERS: UserRow[] = [{ id: 'u1', full_name: 'Demo User', role: 'admin', phone: null, email: 'demo@example.com' }];
+export const USERS: UserRow[] = [{ id: 'u1', full_name: 'Demo User', role: 'admin', phone: null, email: 'demo@example.com', active: true, status: 'active' }];
 export const TEAM: TeamMember[] = [{ id: 'u1', full_name: 'Demo User' }];
 
 export const SETTINGS: Settings = {
@@ -44,14 +44,14 @@ export const PRODUCTS: Product[] = [
   product('p2', 'Coriander Seeds', '090921', '1150.00'),
   product('p3', 'Fennel Seeds', '090961', '1900.00'),
   product('p4', 'Fenugreek Seeds', '091099', '1650.00'),
-  product('p5', 'Psyllium', '121190', '1700.00'),
+  product('p5', 'Psyllium Husk (Isabgol)', '121190', '1700.00'),
   product('p6', 'Turmeric', '091030', '1500.00'),
   product('p7', 'Red Chili Powder', '090422', '1500.00'),
   product('p8', 'Mustard Seeds', '120750', '1350.00'),
 ];
 
 const buyer = (id: string, type: QuoteType, company: string, city: string, place: Partial<Buyer>): Buyer => ({
-  id, type, company_name: company, contact_name: null, email: null, phone: null, whatsapp: null, address: null,
+  id, buyer_code: `BUY-${id.replace(/\D/g, '').padStart(4, '0')}`, type, company_name: company, contact_name: null, email: null, phone: null, whatsapp: null, address: null,
   city, country: null, state: null, state_code: null, gstin: null,
   default_currency: type === 'domestic' ? 'INR' : 'USD', default_incoterm: type === 'domestic' ? null : 'FOB', default_port: null,
   notes: null, archived: false, quote_count: 0, last_contact_at: null, open_quotes: 0,
@@ -101,7 +101,7 @@ function build(s: Seed): QuoteDetail {
     return {
       id: `${s.id}-l${i}`, position: i, product_id: p.id, packing: null, quantity: l.qty, rate: l.rate, amount: l.amount,
       gst_rate: s.type === 'domestic' ? '5.00' : '0.00', cgst: '0.00', sgst: '0.00', igst: s.type === 'domestic' ? s.gst : '0.00', cost_rate: null,
-      product: { id: p.id, name: p.name, grade: p.grade, specification: p.specification, hs_code: p.hs_code, hsn_code: p.hsn_code, unit: p.unit, gst_rate: p.gst_rate },
+      product: { id: p.id, name: p.name, grade: p.grade, specification: p.specification, hs_code: p.hs_code, hsn_code: p.hsn_code, unit: p.unit, gst_rate: p.gst_rate ?? '0.00' },
     };
   });
   const rev: Revision = {
@@ -127,3 +127,16 @@ for (const b of BUYERS) {
   b.quote_count = mine.length;
   b.open_quotes = mine.filter((q) => q.status === 'sent' || q.status === 'negotiating').length;
 }
+
+const inquiryLine = (product_name: string, quantity: string, unit: InquiryLine['unit'], over: Partial<InquiryLine> = {}): InquiryLine =>
+  ({ product_id: null, product_name, grade: null, purity: null, quantity, unit, packaging: null, specifications: null, ...over });
+
+/** Sample inquiries (what buyers asked for before any quotation); the first one has a quotation (q2). */
+export const INQUIRIES: Inquiry[] = [
+  { id: 'i1', inquiry_code: 'INQ-0001', buyer_id: 'b2', buyer_name: 'Demo Spice Importers LLC', inquiry_date: day(-9), products: [inquiryLine('Coriander Seeds', '25', 'MT'), inquiryLine('Fenugreek Seeds', '10', 'MT')],
+    destination_country: 'UAE', destination_port: 'Jebel Ali', currency: 'USD', incoterm: 'CIF', source: 'email', original_message: 'Please quote 25 MT coriander and 10 MT fenugreek, CIF Jebel Ali.', status: 'quoted', assigned_to: 'u1', next_followup: day(0), notes: null, archived: false, quote_count: 1 },
+  { id: 'i2', inquiry_code: 'INQ-0002', buyer_id: 'b1', buyer_name: 'Sample Foods GmbH', inquiry_date: day(-1), products: [inquiryLine('Cumin Seeds', '2', 'MT', { grade: 'Europe Quality', purity: '98%', packaging: '25 kg PP Bag' })],
+    destination_country: 'Germany', destination_port: 'Hamburg', currency: 'USD', incoterm: 'FOB', source: 'website', original_message: null, status: 'new', assigned_to: null, next_followup: day(1), notes: null, archived: false, quote_count: 0 },
+  { id: 'i3', inquiry_code: 'INQ-0003', buyer_id: 'b5', buyer_name: 'Demo Masala Traders', inquiry_date: day(-2), products: [inquiryLine('Coriander Seeds', '5', 'QTL')],
+    destination_country: null, destination_port: null, currency: 'INR', incoterm: null, source: 'whatsapp', original_message: null, status: 'reviewing', assigned_to: 'u1', next_followup: day(-1), notes: 'Wants a price list first.', archived: false, quote_count: 0 },
+];

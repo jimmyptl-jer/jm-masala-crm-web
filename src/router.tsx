@@ -17,10 +17,18 @@ import Pipeline from '@/pages/Pipeline';
 import ProductDetail from '@/pages/ProductDetail';
 import QuoteTemplate from '@/pages/QuoteTemplate';
 import ProductEdit from '@/pages/ProductEdit';
+import DailyRatesPage from '@/pages/DailyRatesPage';
+import Inquiries from '@/pages/Inquiries';
+import PartnerDetail from '@/pages/PartnerDetail';
+import Partners from '@/pages/Partners';
+import InquiryDetail from '@/pages/InquiryDetail';
+import InquiryEdit from '@/pages/InquiryEdit';
 import Followups from '@/pages/Followups';
 import Products from '@/pages/Products';
 import Settings from '@/pages/Settings';
+import CreateAdmin from '@/pages/CreateAdmin';
 import Login from '@/pages/Login';
+import SignUp from '@/pages/SignUp';
 import Orders from '@/pages/Orders';
 import QuoteDetail from '@/pages/QuoteDetail';
 import QuoteForm from '@/pages/QuoteForm';
@@ -52,6 +60,9 @@ export const router = createBrowserRouter([
     element: <Root />,
     children: [
       { path: '/login', element: <Login /> },
+      { path: '/sign-up', element: <SignUp /> },
+      // first-time setup of the administrator: public, works once (the API decides); see pages/CreateAdmin.tsx
+      { path: '/jm-masala-crm-create-admin-user', element: <CreateAdmin /> },
       { path: '/reset-password', element: <ResetPassword /> },
       {
         element: <RequireAuth />,
@@ -68,10 +79,17 @@ export const router = createBrowserRouter([
               { path: '/quotes/:id', element: <QuoteDetail /> },
               { path: '/buyers', element: <Buyers /> },
               { path: '/pipeline', element: <Pipeline /> },
+              { path: '/inquiries', element: <Inquiries /> },
+              { path: '/inquiries/new', element: <InquiryEdit /> },
+              { path: '/inquiries/:id/edit', element: <InquiryEdit /> },
+              { path: '/inquiries/:id', element: <InquiryDetail /> },
               { path: '/buyers/:id', element: <BuyerDetail /> },
               { path: '/follow-ups', element: <Followups /> },
               { path: '/products', element: <Products /> },
               { path: '/products/:name', element: <ProductDetail /> },
+              { path: '/daily-rates', element: <DailyRatesPage /> },
+              { path: '/partners', element: <Partners /> },
+              { path: '/partners/:id', element: <PartnerDetail /> },
               { path: '/orders', element: <Orders /> },
               { element: <RequireAdmin />, children: [{ path: '/settings', element: <Settings /> }, { path: '/products/new', element: <ProductEdit /> }, { path: '/products/:name/edit', element: <ProductEdit /> }] },
               { path: '*', element: <Navigate to="/" replace /> },

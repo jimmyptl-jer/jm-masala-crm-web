@@ -25,6 +25,7 @@ import { BuyerForm } from '@/components/BuyerForm';
 import { LineCard } from '@/components/quoteform/LineCard';
 import { IssueSheet } from '@/components/quoteform/IssueSheet';
 import { TotalsBar } from '@/components/quoteform/TotalsBar';
+import { ApiQuotePreview } from '@/components/quoteform/ApiQuotePreview';
 import { QuotePreview } from '@/components/quoteform/QuotePreview';
 import { SummaryPanel, type CheckItem } from '@/components/quoteform/SummaryPanel';
 import type { SendChoice } from '@/components/quote/SendPicker';
@@ -33,9 +34,10 @@ import {
   formFromRevision, isOtherPayment, mapServerFields, newLine, shippingComplete, validateForm, type FormState, type LineState,
 } from '@/components/quoteform/model';
 import { ApiError, api } from '@/lib/api';
+import { isLive } from '@/lib/config';
 import { money, qty } from '@/lib/format';
 import { useBuyers, useDebounced, useProducts, useSendChannels, useSettings, useUnsavedChanges } from '@/lib/hooks';
-import type { Buyer, CalcResult, Currency, Incoterm, Product, QuoteDetail, QuoteType, SendResult } from '@/lib/types';
+import type { Buyer, CalcResult, Currency, DocumentPreview, Incoterm, Product, QuoteDetail, QuoteType, SendResult } from '@/lib/types';
 import { isApprovedProduct } from '@/lib/products';
 import { t } from '@/strings';
 
@@ -187,11 +189,14 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
   useUnsavedChanges(dirty, t.common.unsavedChanges);
   // preview sheet, and autosave bookkeeping: `autosaving` while a silent save runs, `autoFailed` after one failed
   const [previewOpen, setPreviewOpen] = useState(false);
+  // the quotation page and e-mail the API made for the last saved draft (shown in the preview sheet); null until a save, or on the sample data
+  const [apiDoc, setApiDoc] = useState<DocumentPreview | null>(null);
   const [activeSec, setActiveSec] = useState(1);
   const [autosaving, setAutosaving] = useState(false);
   const [autoFailed, setAutoFailed] = useState(false);
   // always points at the latest autosave function (assigned after `persist` below), so the 10 s timer never uses stale form data
   const autosaveRef = useRef<() => Promise<void>>(async () => undefined);
+  const saveChain = useRef<Promise<void>>(Promise.resolve()); // the save in progress; the next one waits for it (see `persist`)
   useEffect(() => {
     const timer = setInterval(() => { void autosaveRef.current(); }, 10_000);
     return () => clearInterval(timer);
@@ -260,7 +265,7 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
   // SearchSelect options for products ("Name - Grade", with the unit on the second line). Archived products
   // are listed only while a line on this form still uses them.
   const catalogue: Product[] = useMemo(
-    () => [...productMap.values()].filter((p) => (isApprovedProduct(p.name) && !p.archived) || form.lines.some((l) => l.product_id === p.id)),
+    () => [...productMap.values()].filter((p) => (isApprovedProduct(p.name) && !p.archived && (p.status ?? 'active') === 'active') || form.lines.some((l) => l.product_id === p.id)),
     [productMap, form.lines],
   );
 
@@ -487,7 +492,14 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
    * that draft instead of creating a duplicate quote.
    * Failures go to `handleError`.
    */
-  const persist = async (silent = false): Promise<string | null> => {
+  const persist = (silent = false): Promise<string | null> => {
+    // saves run one after another: an autosave still on its way must finish (and give the new draft its id) before the next save starts,
+    // otherwise both would create a draft and the quote would exist twice
+    const run = saveChain.current.then(() => persistNow(silent));
+    saveChain.current = run.then(() => undefined, () => undefined);
+    return run;
+  };
+  const persistNow = async (silent: boolean): Promise<string | null> => {
     const local = validateForm(form);
     if (Object.keys(local).length) {
       if (silent) return null;
@@ -502,7 +514,9 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
         ? await api.put<QuoteDetail>(`/quotes/${id}/draft`, body)
         : await api.post<QuoteDetail>('/quotes', body);
       createdId.current = saved.id;
-      qc.setQueryData(['quote', saved.id], saved);
+      // the answer carries the finished page and e-mail made by the API; the cached quote does not need to hold them
+      setApiDoc(saved.document ?? null);
+      qc.setQueryData(['quote', saved.id], { ...saved, document: undefined });
       setDirty(false);
       setErrors({});
       setFormError(null);
@@ -563,6 +577,25 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
       toast(s.draftSaved);
       void qc.invalidateQueries({ queryKey: ['quotes'] });
       if (!quoteId) setGoto(`/quotes/${id}/edit`);
+    } finally { busyRef.current = false; setBusy(null); }
+  };
+
+  /**
+   * "Preview" handler: with the real API the draft is saved first (the API checks it, calculates it and sends back the finished quotation
+   * page and the e-mail), then the sheet shows exactly that. On the sample data there is no API to ask, so the sheet shows the local layout.
+   * Ignored while another save runs; a failed save shows its errors and keeps the sheet closed.
+   */
+  const onPreview = async () => {
+    if (busyRef.current) return;
+    if (!isLive('POST', '/quotes')) { setPreviewOpen(true); return; }
+    busyRef.current = true;
+    setBusy('save');
+    try {
+      const id = await persist();
+      if (!id) return;
+      void qc.invalidateQueries({ queryKey: ['quotes'] });
+      // no navigation to the edit address here: it would reload the form and close the sheet. The id is remembered (createdId), so the next save updates this draft.
+      setPreviewOpen(true);
     } finally { busyRef.current = false; setBusy(null); }
   };
 
@@ -855,7 +888,7 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
           <SummaryPanel
             calc={calc} currency={currency} type={form.type} pending={calcPending} calcError={calcError} hasInput={!!calcInput}
             qtyLine={qtyLine} checklist={checklist} showMargin={showCost} busy={busy} saveState={saveState}
-            onFinalise={onIssue} onPreview={() => setPreviewOpen(true)} onSave={() => void onSave()}
+            onFinalise={onIssue} onPreview={() => void onPreview()} onSave={() => void onSave()}
           />
         </aside>
       </div>
@@ -869,7 +902,9 @@ function QuoteFormScreen({ quoteId }: { quoteId: string | undefined }) {
 
       {/* Preview PDF: the quotation document on the letterhead */}
       <Sheet huge open={previewOpen} onClose={() => setPreviewOpen(false)} title={s.previewSheetTitle}>
-        <QuotePreview settings={settingsQ.data} buyer={buyer} form={form} products={productMap} calc={calc} currency={currency} number={revNumber} lineAmount={(uid) => calcLineFor(uid)?.amount} />
+        {apiDoc
+          ? <ApiQuotePreview doc={apiDoc} />
+          : <QuotePreview settings={settingsQ.data} buyer={buyer} form={form} products={productMap} calc={calc} currency={currency} number={revNumber} lineAmount={(uid) => calcLineFor(uid)?.amount} />}
       </Sheet>
 
       {/* Issue sheet: confirm, and choose Email / WhatsApp / don't send */}

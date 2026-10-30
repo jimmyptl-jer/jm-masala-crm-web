@@ -1,0 +1,68 @@
+/** Text of the Partners & Suppliers screens (list, form, profile). Pure data; the keys for roles, statuses, kinds and units are the API's. */
+import type { PartnerActivityKind, PartnerRole, PartnerStatus } from '@/lib/partners';
+
+export const partners = {
+  title: 'Partners & Suppliers',
+  subtitle: 'Your external business network: suppliers, processors, transporters, CHAs and service providers.',
+  add: 'Add partner',
+  addTitle: 'Add partner',
+  editTitle: 'Edit partner',
+  search: 'Search by name, code, contact, city, product or service…',
+  directory: 'Partner directory',
+  match: (n: number) => `${n} partner${n === 1 ? '' : 's'} match your view`,
+  loading: 'Loading partners',
+  none: 'No partners yet',
+  noneMatch: 'No partners match these filters',
+  addFirst: 'Add your first partner',
+  clear: 'Clear filters',
+  reset: 'Reset',
+  archivedToggle: 'Show archived',
+  notFound: 'Partner not found.',
+  roles: {
+    supplier: 'Supplier', processor: 'Processor', packager: 'Packager', transporter: 'Transporter', cha: 'CHA', freight_forwarder: 'Freight forwarder', shipping_line: 'Shipping line',
+    laboratory: 'Laboratory', fumigation: 'Fumigation', warehouse: 'Warehouse', insurance: 'Insurance', commission_agent: 'Commission agent', other: 'Other',
+  } satisfies Record<PartnerRole, string>,
+  roleHint: {
+    supplier: 'Farmers, aggregators, traders and manufacturers who sell you spices', processor: 'Cleaning, Sortex, grinding and sieving', packager: 'Packing and packaging material',
+    transporter: 'Pickup, factory-to-port and container transport', cha: 'Customs clearance and documentation', freight_forwarder: 'Container booking and forwarding', shipping_line: 'Ocean carriers',
+    laboratory: 'Testing and inspection', fumigation: 'Fumigation and treatment', warehouse: 'Storage', insurance: 'Cargo and other insurance', commission_agent: 'Agents paid by commission', other: 'Anyone else',
+  } satisfies Record<PartnerRole, string>,
+  status: { active: 'Active', under_review: 'Under review', inactive: 'Inactive' } satisfies Record<PartnerStatus, string>,
+  filters: { role: 'Role', status: 'Status', allRoles: 'All roles', allStatuses: 'All statuses' },
+  cols: { code: 'Partner ID', company: 'Company', roles: 'Roles', contact: 'Primary contact', phone: 'Phone / WhatsApp', location: 'City / State', offering: 'Products / services', last: 'Last interaction', status: 'Status', actions: 'Actions' },
+  actions: { view: 'View', edit: 'Edit', log: 'Log activity' },
+  metricTotal: 'Partners', metricTotalSub: 'Active partner records',
+  metricSuppliers: 'Suppliers', metricSuppliersSub: 'Companies that sell you product',
+  metricLogistics: 'Logistics', metricLogisticsSub: 'Transport, CHA and forwarders',
+  metricReview: 'Under review', metricReviewSub: 'Waiting for a decision',
+  noContact: 'Not set',
+  noInteraction: 'No contact yet',
+  // form
+  f: {
+    company: 'Company name', legal: 'Legal name', roles: 'Roles', rolesHint: 'Choose every role this company plays; one is enough.', status: 'Status', email: 'E-mail', phone: 'Phone', whatsapp: 'WhatsApp', website: 'Website',
+    address: 'Address', city: 'City', state: 'State', country: 'Country', postal: 'Postal code', gstin: 'GST number', pan: 'PAN', registration: 'Registration details', notes: 'Notes',
+    save: 'Save partner', cancel: 'Cancel', added: 'Partner added', updated: 'Partner updated', chooseRole: 'Choose at least one role.', enterName: 'Enter the company name.',
+    sectionCompany: 'Company', sectionContact: 'Contact and address', sectionTax: 'Registration',
+  },
+  // profile
+  p: {
+    back: 'All partners', edit: 'Edit', archive: 'Archive', restore: 'Restore', archived: 'This partner is archived.', archivedToast: 'Partner archived', restoredToast: 'Partner restored',
+    call: 'Call', whatsapp: 'WhatsApp', email: 'E-mail', website: 'Website',
+    overview: 'Company details', contacts: 'Contacts', services: 'Services', activity: 'Activity',
+    addContact: 'Add contact', editContact: 'Edit contact', noContacts: 'No contacts yet.', primary: 'Primary',
+    c: { name: 'Name', designation: 'Designation', department: 'Department', email: 'E-mail', phone: 'Phone', whatsapp: 'WhatsApp', primary: 'Primary contact', notes: 'Notes', save: 'Save contact', remove: 'Remove', saved: 'Contacts saved' },
+    addService: 'Add service', editService: 'Edit service', noServices: 'No services yet. Add what this partner supplies or does.',
+    sv: {
+      role: 'Role', name: 'Service', products: 'Products supplied', areas: 'Service areas', listHint: 'Separate with commas', lead: 'Lead time (days)', capacity: 'Capacity notes', notes: 'Notes',
+      rate: 'Rate', currency: 'Currency', unit: 'Rate unit', minimum: 'Minimum order', payment: 'Payment terms', adminOnly: 'Rates, minimum orders and payment terms are visible to administrators only.',
+      documents: 'Documents', addDocument: 'Add document', docName: 'Document', docNumber: 'Number', docExpiry: 'Expires on', noDocuments: 'No documents.', save: 'Save service', remove: 'Remove service', saved: 'Services saved',
+      expired: 'Expired', soon: 'Expires soon', leadDays: (n: number) => `${n} day${n === 1 ? '' : 's'} lead time`,
+    },
+    units: { per_kg: 'per kg', per_ton: 'per ton', per_trip: 'per trip', per_container: 'per container', per_document: 'per document', per_job: 'per job', per_month: 'per month' } as Record<string, string>,
+    logActivity: 'Log activity', noActivity: 'Nothing logged yet.',
+    a: { kind: 'What happened', body: 'Note', date: 'Date', save: 'Save', saved: 'Activity logged' },
+    kind: { call: 'Call', whatsapp: 'WhatsApp', email: 'E-mail', meeting: 'Meeting', note: 'Note' } satisfies Record<PartnerActivityKind, string>,
+    code: 'Partner ID', legal: 'Legal name', address: 'Address', gstin: 'GST number', pan: 'PAN', registration: 'Registration', notes: 'Notes', owner: 'Looked after by',
+  },
+  paletteSub: (code: string, place: string) => [code, place].filter(Boolean).join(' · '),
+};

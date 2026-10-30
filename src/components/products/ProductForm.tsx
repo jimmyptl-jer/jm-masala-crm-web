@@ -2,14 +2,16 @@
  * Admin-only add / edit form for a product and all of its grades (opened from pages/Products.tsx).
  *
  * A "product" here is one name (e.g. Cumin Seeds) with one row per grade, because that is how the API stores it:
- * every grade is its own /products row. The form edits them together: shared name and packing options, a grades
- * table (specs, codes, tax, active toggle), per-grade reference rates and the packaging image.
+ * every grade is its own /products row. The form edits them together: the shared name, HS and HSN code and packing options, a grades
+ * table (specs, tax, the rate per kg in USD and INR, active toggle) and the packaging image. The two codes belong to the product, so one
+ * value is written to every grade.
  *
  * API: GET /products?archived=all (useProducts, to load every grade of the product being edited);
  * POST /products (new grade), PATCH /products/:id (existing grade, including archived), POST/DELETE
- * /products/:id/image (image of the first grade, saved at once). Invalidates ['products'] and toasts.
- * Grades are archived, never deleted (BR-12): a saved grade can be switched off, only an unsaved row can be removed.
- * Packing options are shared: the same list is written to every grade. Reference rates are guidance only.
+ * /products/:id/image (image of the first grade, saved at once), DELETE /products/:id?permanent=1 (delete a grade; the API deletes it
+ * for good when no quotation used it and archives it otherwise). Invalidates ['products'] and toasts.
+ * A saved grade can also be switched off. Packing options and the two codes are shared: the same values are written to every grade. Rates are per kilogram;
+ * the Daily rates tab of the Products page edits the same two fields.
  * Not in the data yet (needs an API change, see docs/PRODUCT-MODEL-PROPOSAL.md): product code, category, several
  * images, documents.
  * Local state: name, packing, grades (rows), errors, busy, fatal, confirming, and the image state.
@@ -17,7 +19,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowUpToLine, ImagePlus, Plus, Trash2 } from 'lucide-react';
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Button, ErrorNote, Input, NumberInput, Select, Spinner, Textarea, useToast } from '@/components/ui';
+import { Button, ErrorNote, Input, Select, Spinner, Textarea, useToast } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import { useProducts } from '@/lib/hooks';
 import type { Product } from '@/lib/types';
@@ -40,8 +42,6 @@ interface GradeRow {
   purity: string;
   moisture: string;
   specification: string;
-  hs_code: string;
-  hsn_code: string;
   gst_rate: string;
   unit: Product['unit'];
   ref_rate_usd: string;
@@ -52,12 +52,12 @@ interface GradeRow {
 let counter = 0;
 const newKey = () => `g${++counter}`;
 const blankGrade = (): GradeRow => ({
-  key: newKey(), grade: '', cleaning: '', purity: '', moisture: '', specification: '', hs_code: '', hsn_code: '',
+  key: newKey(), grade: '', cleaning: '', purity: '', moisture: '', specification: '',
   gst_rate: '0', unit: 'MT', ref_rate_usd: '', ref_rate_inr: '', archived: false,
 });
 const fromProduct = (p: Product): GradeRow => ({
   key: newKey(), id: p.id, grade: p.grade ?? '', cleaning: p.cleaning ?? '', purity: p.purity ?? '', moisture: p.moisture ?? '',
-  specification: p.specification ?? '', hs_code: p.hs_code ?? '', hsn_code: p.hsn_code ?? '', gst_rate: p.gst_rate, unit: p.unit,
+  specification: p.specification ?? '', gst_rate: p.gst_rate ?? '', unit: p.unit,
   ref_rate_usd: p.ref_rate_usd ?? '', ref_rate_inr: p.ref_rate_inr ?? '', archived: p.archived,
 });
 
@@ -66,7 +66,6 @@ const FORM_STEPS = [
   { id: 'pf-basic', title: s.secBasic, hint: s.stepBasicHint },
   { id: 'pf-grade', title: s.secGrade, hint: s.stepGradeHint },
   { id: 'pf-packing', title: s.packingTitle, hint: s.stepPackingHint },
-  { id: 'pf-pricing', title: s.secPricing, hint: s.stepPricingHint },
   { id: 'pf-images', title: s.imageTitle, hint: s.stepImagesHint },
 ] as const;
 
@@ -106,6 +105,11 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
   existing: Product[]; editing: boolean; qc: ReturnType<typeof useQueryClient>; toast: ReturnType<typeof useToast>; onSaved: () => void; onCancel: () => void;
 }) {
   const [name, setName] = useState(existing[0]?.name ?? '');
+  // one status for every grade of the product: a draft may leave GST empty and is not offered on quotations
+  const [status, setStatus] = useState<'draft' | 'active'>(existing.find((p) => !p.archived)?.status ?? existing[0]?.status ?? 'active');
+  // the HS (export) and HSN (domestic) codes belong to the product: one value for every grade
+  const [hs, setHs] = useState(() => existing.find((p) => p.hs_code)?.hs_code ?? '');
+  const [hsn, setHsn] = useState(() => existing.find((p) => p.hsn_code)?.hsn_code ?? '');
   const [packing, setPacking] = useState<string[]>(() => [...(existing.find((p) => p.packing_options.length)?.packing_options ?? [])]);
   const [grades, setGrades] = useState<GradeRow[]>(() => (existing.length ? existing.map(fromProduct) : [blankGrade()]));
   // field-level messages: 'name', 'grades', 'packing_options...' or `${row key}.${field}`
@@ -175,9 +179,10 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
     cleaning: r.cleaning.trim() || null,
     purity: r.purity.trim() || null,
     moisture: r.moisture.trim() || null,
-    hs_code: r.hs_code.trim() || null,
-    hsn_code: r.hsn_code.trim() || null,
-    gst_rate: r.gst_rate,
+    hs_code: hs.trim() || null,
+    hsn_code: hsn.trim() || null,
+    gst_rate: r.gst_rate.trim() || null,
+    status,
     unit: r.unit,
     packing_options: packing.map((p) => p.trim()).filter(Boolean),
     ref_rate_usd: r.ref_rate_usd || null,
@@ -198,7 +203,7 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
     if (grades.every((r) => r.archived)) v.grades = s.needOneGrade;
     const seen = new Set<string>();
     for (const r of grades) {
-      if (!r.gst_rate.trim()) v[`${r.key}.gst_rate`] = s.gstRequired;
+      if (!r.gst_rate.trim() && status === 'active') v[`${r.key}.gst_rate`] = s.gstRequiredActive;
       if (!r.archived) {
         const k = r.grade.trim().toLowerCase();
         if (seen.has(k)) v[`${r.key}.grade`] = s.gradeDuplicate;
@@ -221,6 +226,7 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
         }
       }
       await qc.invalidateQueries({ queryKey: ['products'] });
+      void qc.invalidateQueries({ queryKey: ['rate-history'] });
       toast(editing ? s.updated : s.created);
       onSaved();
     } catch (e) {
@@ -246,6 +252,33 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
     } catch (e) {
       setFatal(e);
       setConfirming(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * Delete a saved grade (after the confirm box): DELETE /products/:id?permanent=1. The API deletes it for good when no quotation used it
+   * and archives it otherwise; the row leaves the form or turns into an archived row. Deleting the last grade closes the form.
+   */
+  const deleteGrade = async (r: GradeRow) => {
+    if (!r.id || busy) return;
+    if (!window.confirm(s.deleteGradeConfirm(r.grade.trim() || s.untitledGrade))) return;
+    setBusy(true);
+    setFatal(null);
+    try {
+      const res = await api.del<{ deleted: boolean }>(`/products/${r.id}?permanent=1`);
+      await qc.invalidateQueries({ queryKey: ['products'] });
+      if (res.deleted) {
+        toast(s.gradeDeleted);
+        if (grades.filter((x) => x.key !== r.key).length === 0) { onSaved(); return; }
+        setGrades((rows) => rows.filter((x) => x.key !== r.key));
+      } else {
+        toast(s.gradeArchivedInstead);
+        setGrade(r.key, { archived: true });
+      }
+    } catch (e) {
+      setFatal(e);
     } finally {
       setBusy(false);
     }
@@ -279,9 +312,18 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
                 <option value="">Choose a product</option>
                 {APPROVED_PRODUCT_NAMES.map((n) => <option key={n} value={n}>{n}</option>)}
               </Select>
+              <Select label={s.statusLabel} value={status} onChange={(e) => setStatus(e.target.value as 'draft' | 'active')} hint={s.statusHint}>
+                <option value="active">{s.statusActiveOption}</option>
+                <option value="draft">{s.statusDraftOption}</option>
+              </Select>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input label={s.hsCode} optional value={hs} onChange={(e) => setHs(e.target.value)} error={errors.hs_code} autoComplete="off" />
+                <Input label={s.hsnCode} optional value={hsn} onChange={(e) => setHsn(e.target.value)} error={errors.hsn_code} autoComplete="off" />
+              </div>
+              <p className="text-xs text-slate-500">{s.codesShared}</p>
               <p className="text-sm text-slate-500">{s.basicHint}</p>
             </FormCard>
-            <FormCard id="pf-images" n={5} title={s.imageTitle}>
+            <FormCard id="pf-images" n={4} title={s.imageTitle}>
               {!primary ? <p className="text-sm text-slate-500">{s.imageSaveFirst}</p> : (
                 <>
                   <div className="grid h-32 w-full place-items-center overflow-hidden rounded-lg border border-slate-200 bg-forest-50">
@@ -307,18 +349,19 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
           >
             {errors.grades && <p role="alert" className="text-sm text-red-700">{errors.grades}</p>}
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px] border-separate border-spacing-y-1 text-left text-sm">
+              <table className="w-full min-w-[1040px] border-separate border-spacing-y-1 text-left text-sm">
                 <thead>
                   <tr className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     <th className="w-8 px-1 py-1">#</th><th className="px-1 py-1">{s.grade}</th><th className="px-1 py-1">{s.cleaning}</th>
                     <th className="px-1 py-1">{s.purity}</th><th className="px-1 py-1">{s.moisture}</th><th className="px-1 py-1">{s.unit}</th>
-                    <th className="w-20 px-1 py-1">{s.gstRate}</th><th className="px-1 py-1">{s.hsCode}</th><th className="px-1 py-1">{s.hsnCode}</th>
+                    <th className="w-20 px-1 py-1">{s.gstRate}</th>
+                    <th className="w-28 px-1 py-1">{s.refUsdLabel}</th><th className="w-28 px-1 py-1">{s.refInrLabel}</th>
                     <th className="px-1 py-1">{s.gradeStatus}</th><th className="px-1 py-1 text-right">{s.colActions}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {grades.map((r, i) => (
-                    <GradeTableRow key={r.key} r={r} n={i + 1} err={(f) => err(r.key, f)} onChange={(p) => setGrade(r.key, p)} onRemove={r.id ? undefined : () => removeUnsaved(r.key)} />
+                    <GradeTableRow key={r.key} r={r} n={i + 1} err={(f) => err(r.key, f)} onChange={(p) => setGrade(r.key, p)} onRemove={r.id ? undefined : () => removeUnsaved(r.key)} onDelete={r.id ? () => void deleteGrade(r) : undefined} busy={busy} />
                   ))}
                 </tbody>
               </table>
@@ -345,18 +388,6 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
             {packingError && <p role="alert" className="text-sm text-red-700">{packingError}</p>}
             <Button variant="secondary" className="w-full" onClick={() => setPacking((x) => [...x, ''])}><Plus className="h-5 w-5" aria-hidden />{s.addPacking}</Button>
             {grades.length > 1 && <p className="text-xs text-slate-500">{s.packingShared}</p>}
-          </FormCard>
-
-          <FormCard id="pf-pricing" n={4} title={s.secPricing} hint={s.refHint}>
-            <ul className="space-y-2">
-              {grades.filter((r) => !r.archived).map((r) => (
-                <li key={r.key} className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_10rem]">
-                  <span className="pb-2 font-medium text-crm-ink">{r.grade.trim() || s.untitledGrade}</span>
-                  <NumberInput label={s.refUsdLabel} value={r.ref_rate_usd} onChange={(v) => setGrade(r.key, { ref_rate_usd: v })} error={err(r.key, 'ref_rate_usd')} optional />
-                  <NumberInput label={s.refInrLabel} value={r.ref_rate_inr} onChange={(v) => setGrade(r.key, { ref_rate_inr: v })} error={err(r.key, 'ref_rate_inr')} optional />
-                </li>
-              ))}
-            </ul>
           </FormCard>
         </div>
       </div>
@@ -391,10 +422,10 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
 }
 
 /** Two table rows for one grade: its short fields, then its specification text across the full width. */
-function GradeTableRow({ r, n, err, onChange, onRemove }: {
-  r: GradeRow; n: number; err: (field: string) => string | undefined; onChange: (p: Partial<GradeRow>) => void; onRemove?: () => void;
+function GradeTableRow({ r, n, err, onChange, onRemove, onDelete, busy }: {
+  r: GradeRow; n: number; err: (field: string) => string | undefined; onChange: (p: Partial<GradeRow>) => void; onRemove?: () => void; onDelete?: () => void; busy?: boolean;
 }) {
-  const text = (field: 'grade' | 'cleaning' | 'purity' | 'moisture' | 'hs_code' | 'hsn_code', label: string) => (
+  const text = (field: 'grade' | 'cleaning' | 'purity' | 'moisture', label: string) => (
     <input aria-label={`${label} ${n}`} value={r[field]} onChange={(e) => onChange({ [field]: e.target.value })} autoComplete="off" aria-invalid={!!err(field)}
       className={`${cell} ${err(field) ? 'border-red-600' : ''}`} />
   );
@@ -416,8 +447,14 @@ function GradeTableRow({ r, n, err, onChange, onRemove }: {
             className={`${cell} text-right tabular-nums ${err('gst_rate') ? 'border-red-600' : ''}`} aria-invalid={!!err('gst_rate')} />
           {err('gst_rate') && <p role="alert" className="text-xs text-red-700">{err('gst_rate')}</p>}
         </td>
-        <td className="px-1">{text('hs_code', s.hsCode)}</td>
-        <td className="px-1">{text('hsn_code', s.hsnCode)}</td>
+        {(['ref_rate_usd', 'ref_rate_inr'] as const).map((field) => (
+          <td key={field} className="px-1">
+            <input aria-label={`${field === 'ref_rate_usd' ? s.refUsdLabel : s.refInrLabel} ${n}`} inputMode="decimal" value={r[field]} placeholder="0.00"
+              onChange={(e) => { const v = e.target.value.replace(',', '.'); if (numberOk(v, 2)) onChange({ [field]: v }); }}
+              className={`${cell} text-right tabular-nums ${err(field) ? 'border-red-600' : ''}`} aria-invalid={!!err(field)} />
+            {err(field) && <p role="alert" className="text-xs text-red-700">{err(field)}</p>}
+          </td>
+        ))}
         <td className="px-1">
           <label className="inline-flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-emerald-800">
             <input type="checkbox" checked={!r.archived} onChange={(e) => onChange({ archived: !e.target.checked })} className="h-4 w-4 accent-forest-700" aria-label={`${s.gradeStatus} ${n}`} />
@@ -426,6 +463,7 @@ function GradeTableRow({ r, n, err, onChange, onRemove }: {
         </td>
         <td className="px-1 text-right">
           {onRemove && <button type="button" onClick={onRemove} aria-label={s.removeGrade(n)} className="tap inline-grid place-items-center rounded-lg text-red-700 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>}
+          {onDelete && <button type="button" disabled={busy} onClick={onDelete} aria-label={s.deleteGrade(n)} title={s.deleteGrade(n)} className="tap inline-grid place-items-center rounded-lg text-red-700 hover:bg-red-50 disabled:opacity-45"><Trash2 className="h-4 w-4" /></button>}
         </td>
       </tr>
       <tr className={r.archived ? 'opacity-60' : ''}>

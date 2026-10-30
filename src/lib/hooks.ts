@@ -11,7 +11,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useBlocker } from 'react-router-dom';
 import { api, qs } from './api';
-import type { Buyer, BuyerSummary, CampaignListRow, MarketingAsset, MarketingTemplate, Product, SendChannels, Settings, TeamMember } from './types';
+import type { Partner, PartnerDetail } from './partners';
+import type { Buyer, BuyerSummary, CampaignListRow, FxRate, Inquiry, MarketingAsset, MarketingTemplate, Product, SendChannels, Settings, TeamMember } from './types';
 
 /**
  * Return `value` only after it has stopped changing for `ms` milliseconds. Used so typing in a search box
@@ -73,6 +74,13 @@ export function useUnsavedChanges(dirty: boolean, message: string) {
  * @param opts.stage — one pipeline stage; @param opts.channel — one lead channel; @param opts.qualified — 'true' / 'false';
  * @param opts.due — '1' = the buyer's own next follow-up date is today or earlier (Buyer CRM filters).
  */
+/** GET /inquiries (react-query key ['inquiries', opts]); every inquiry change invalidates ['inquiries']. */
+export const useInquiries = (opts: { q?: string; status?: string; buyer_id?: string; product?: string; assigned_to?: string; archived?: 'true' | 'false' | 'all'; due?: '1' } = {}) =>
+  useQuery({
+    queryKey: ['inquiries', opts],
+    queryFn: () => api.get<{ data: Inquiry[] }>(`/inquiries${qs(opts)}`).then((r) => r.data),
+  });
+
 export const useBuyers = (opts: { q?: string; type?: string; archived?: 'true' | 'false' | 'all'; stage?: string; channel?: string; qualified?: 'true' | 'false'; due?: '1' } = {}) =>
   useQuery({
     queryKey: ['buyers', opts],
@@ -100,6 +108,12 @@ export const useProducts = (opts: { q?: string; archived?: 'true' | 'false' | 'a
  */
 export const useSettings = () =>
   useQuery({ queryKey: ['settings'], queryFn: () => api.get<Settings>('/settings'), staleTime: 5 * 60_000 });
+
+/**
+ * Today's dollar rate: GET /fx-rate (key ['fx-rate']), rupees for one US dollar, shared by the whole team and edited on the dashboard
+ * (PUT /fx-rate, see components/FxRateBar.tsx). Only the API uses it for calculations; the screens show it and the rupee value it gives.
+ */
+export const useFxRate = () => useQuery({ queryKey: ['fx-rate'], queryFn: () => api.get<FxRate>('/fx-rate'), staleTime: 60_000 });
 
 /**
  * GET /send-channels: which of Email / WhatsApp the server can send directly (key ['send-channels']).
@@ -136,3 +150,21 @@ export const useAssets = () =>
 /** GET /marketing/campaigns: the campaign history, newest first (key ['marketing', 'campaigns']). */
 export const useCampaigns = () =>
   useQuery({ queryKey: ['marketing', 'campaigns'], queryFn: () => api.get<{ data: CampaignListRow[] }>('/marketing/campaigns').then((r) => r.data) });
+
+/**
+ * GET /partners: the partner directory (key ['partners', opts]); every partner change invalidates ['partners'].
+ * @param opts.q search text; @param opts.role one role; @param opts.status one status; @param opts.archived 'false' (default), 'true' or 'all'.
+ */
+export const usePartners = (opts: { q?: string; role?: string; status?: string; archived?: 'true' | 'false' | 'all' } = {}) =>
+  useQuery({ queryKey: ['partners', opts], queryFn: () => api.get<{ data: Partner[] }>(`/partners${qs(opts)}`).then((r) => r.data) });
+
+/** GET /partners/:id: one partner with its activity log (key ['partner', id]). */
+export const usePartner = (id: string | undefined) =>
+  useQuery({ queryKey: ['partner', id], queryFn: () => api.get<PartnerDetail>(`/partners/${id}`), enabled: !!id });
+
+/** One day's rates of a grade, as GET /products/:id/rate-history returns them. */
+export interface RateHistoryRow { date: string; ref_rate_usd: string | null; ref_rate_inr: string | null; set_by_name: string; set_at: string }
+
+/** GET /products/:id/rate-history: the day-by-day rates of one grade, newest first (key ['rate-history', id]; the rate changes invalidate it). */
+export const useRateHistory = (id: string | null) =>
+  useQuery({ queryKey: ['rate-history', id], queryFn: () => api.get<{ data: RateHistoryRow[] }>(`/products/${id}/rate-history`).then((r) => r.data), enabled: !!id });

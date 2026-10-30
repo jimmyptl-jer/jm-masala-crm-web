@@ -317,7 +317,7 @@ export const SHIPPING_KEYS = ['type', 'currency', 'incoterm', 'port_loading', 'p
 
 /**
  * Maps the API's validation errors (`ApiError.fields`) onto form inputs.
- * @param fields - key -> message from the API response (zod issues use dotted paths like `lines.2.rate`; the
+ * @param fields - key -> message from the API response (nested inputs use dotted paths like `lines.2.rate`; the
  *   issue step uses `lines`, `payment_terms`, `incoterm`, `port_loading`, `port_discharge`, ...).
  * @param sentIdx - from `buildSaveBody`: form index of each line that was sent.
  * @returns `{ errors, other }`: `errors` = messages keyed for the inputs (line keys re-indexed: the API's

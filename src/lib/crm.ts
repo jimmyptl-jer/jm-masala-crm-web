@@ -16,7 +16,7 @@ export const STAGES: Stage[] = [
 export const CHANNELS: Channel[] = ['direct', 'marketplace', 'website', 'trade_fair', 'linkedin', 'referral', 'other'];
 
 /** Kinds of business. */
-export const BUSINESS_TYPES: BusinessType[] = ['importer', 'distributor', 'wholesaler', 'retailer', 'manufacturer', 'trader'];
+export const BUSINESS_TYPES: BusinessType[] = ['importer', 'distributor', 'wholesaler', 'retailer', 'manufacturer', 'trader', 'agent'];
 
 /**
  * The buckets the business wants to keep apart (an inquiry is not automatically a buyer): prospect (unverified),
@@ -54,4 +54,29 @@ export const GROUP_TINT: Record<StageGroup, string> = {
   opportunity: 'bg-warning-bg',
   customer: 'bg-success-bg',
   lost: 'bg-danger-bg',
+};
+
+/** The five labels the Buyers table shows, a simpler view of the pipeline stage (the stage stays the detail). */
+export type BuyerStatus = 'lead' | 'contacted' | 'qualified' | 'active' | 'inactive';
+
+/**
+ * @param buyer — stage, archived flag.
+ * @returns lead = new_lead; contacted = contacted; qualified = qualified or requirements_received; inactive = lost or archived;
+ *   active = every later stage (quotation sent ... won).
+ */
+export function buyerStatus(buyer: { stage: Stage; archived: boolean }): BuyerStatus {
+  if (buyer.archived || buyer.stage === 'lost') return 'inactive';
+  if (buyer.stage === 'new_lead') return 'lead';
+  if (buyer.stage === 'contacted') return 'contacted';
+  if (buyer.stage === 'qualified' || buyer.stage === 'requirements_received') return 'qualified';
+  return 'active';
+}
+
+/** Tailwind colour classes of the status pill. */
+export const STATUS_STYLE: Record<BuyerStatus, string> = {
+  lead: 'bg-surface-muted text-fg-secondary',
+  contacted: 'bg-info-bg text-info-ink',
+  qualified: 'bg-warning-bg text-warning-ink',
+  active: 'bg-success-bg text-success-ink',
+  inactive: 'bg-danger-bg text-danger-ink',
 };

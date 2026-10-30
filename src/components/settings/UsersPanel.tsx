@@ -1,8 +1,8 @@
 /**
- * Settings > Users (admin only, FR-04): view users and edit their name and phone.
+ * Settings > Users (admin only, FR-04): see everyone, approve people who signed up (they have no access until approved), and edit a
+ * user's name, phone, role and access (active / deactivated).
  * API: GET /users (key ['users']) and PATCH /users/:id (invalidates ['users']; also refreshes the auth
- * profile via useAuth().refreshMe when editing yourself, so "Prepared by" is current). Role changes are not
- * offered in this screen.
+ * profile via useAuth().refreshMe when editing yourself, so "Prepared by" is current). The API refuses to remove the last active admin.
  * Rendered by pages/Settings.tsx. Composes Sheet, Input, Button, ErrorNote, Spinner, EmptyState.
  */
 
@@ -11,7 +11,7 @@ import clsx from 'clsx';
 import { Pencil } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/auth/AuthProvider';
-import { Button, EmptyState, ErrorNote, Input, Sheet, Spinner, useToast } from '@/components/ui';
+import { Button, EmptyState, ErrorNote, Input, Select, Sheet, Spinner, useToast } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import type { Role, UserRow } from '@/lib/types';
 import { t } from '@/strings';
@@ -39,11 +39,13 @@ function UserEditor({ user, onClose }: { user: UserRow; onClose: () => void }) {
   const { me, refreshMe } = useAuth();
   const [name, setName] = useState(user.full_name);
   const [phone, setPhone] = useState(user.phone ?? '');
+  const [role, setRole] = useState<Role>(user.role);
+  const [active, setActive] = useState(user.active ?? true);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // react-query mutation: PATCH /users/:id. isPending drives the spinner and the double-submit guard.
   const save = useMutation({
-    mutationFn: (body: { full_name: string; phone: string }) => api.patch<UserRow>(`/users/${user.id}`, body),
+    mutationFn: (body: { full_name: string; phone: string; role: Role; active: boolean }) => api.patch<UserRow>(`/users/${user.id}`, body),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['users'] });
       if (me?.id === user.id) await refreshMe();
@@ -61,7 +63,7 @@ function UserEditor({ user, onClose }: { user: UserRow; onClose: () => void }) {
     if (save.isPending) return;
     if (!name.trim()) { setErrors({ full_name: s.nameMissing }); return; }
     setErrors({});
-    save.mutate({ full_name: name.trim(), phone: phone.trim() }); // everyone is an admin: role is not editable
+    save.mutate({ full_name: name.trim(), phone: phone.trim(), role, active });
   };
 
   // Errors to show in the ErrorNote: only the ones that have no per-field messages (those are shown under
@@ -73,6 +75,10 @@ function UserEditor({ user, onClose }: { user: UserRow; onClose: () => void }) {
       <p className="text-base text-fg-secondary">{user.email ?? s.noEmail}</p>
       <Input label={s.fullName} hint={s.fullNameHint} value={name} onChange={(e) => setName(e.target.value)} error={errors.full_name} autoComplete="off" />
       <Input label={s.userPhone} optional type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} error={errors.phone} autoComplete="off" />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Select label={s.roleLabel} value={role} onChange={(e) => setRole(e.target.value as Role)}><option value="sales">{s.roleSales}</option><option value="admin">{s.roleAdmin}</option></Select>
+        <Select label={s.accessLabel} value={active ? 'on' : 'off'} onChange={(e) => setActive(e.target.value === 'on')}><option value="on">{s.accessActive}</option><option value="off">{s.accessOff}</option></Select>
+      </div>
       {failure && <ErrorNote error={failure} />}
       <div className="flex gap-2">
         <Button variant="secondary" className="flex-1" onClick={onClose} disabled={save.isPending}>{t.common.cancel}</Button>
@@ -96,10 +102,18 @@ export function UsersPanel() {
   const query = useQuery({ queryKey: ['users'], queryFn: () => api.get<{ data: UserRow[] }>('/users').then((r) => r.data) });
   // The user whose editor sheet is open, or null.
   const [editing, setEditing] = useState<UserRow | null>(null);
+  const qc = useQueryClient();
+  const toast = useToast();
+  // one click approval of a pending person: PATCH /users/:id { active: true }
+  const approve = useMutation({
+    mutationFn: (id: string) => api.patch<UserRow>(`/users/${id}`, { active: true }),
+    onSuccess: async () => { await qc.invalidateQueries({ queryKey: ['users'] }); toast(s.approved); },
+  });
 
   return (
     <div className="space-y-3">
       <p className="rounded-lg bg-cream-100 p-3 text-sm text-fg-secondary">{s.usersNote}</p>
+      {approve.isError && <ErrorNote error={approve.error} />}
       {query.isPending ? <Spinner /> : query.isError ? <ErrorNote error={query.error} onRetry={() => void query.refetch()} /> : query.data.length === 0 ? (
         <EmptyState title={s.usersEmpty} />
       ) : (
@@ -110,9 +124,12 @@ export function UsersPanel() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="break-words text-base font-semibold text-forest-900">{u.full_name}</span>
                   <span className={clsx('inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold', u.role === 'admin' ? 'bg-gold-100 text-wood-800' : 'bg-forest-100 text-forest-900')}>{roleLabel(u.role)}</span>
+                  {u.status === 'pending' && <span className="inline-block rounded-full bg-warning-bg px-2.5 py-0.5 text-xs font-semibold text-warning-ink">{s.statusPending}</span>}
+                  {u.status === 'inactive' && <span className="inline-block rounded-full bg-danger-bg px-2.5 py-0.5 text-xs font-semibold text-danger-ink">{s.statusInactive}</span>}
                 </div>
                 <div className="truncate text-sm text-fg-muted">{u.email ?? s.noEmail}</div>
               </div>
+              {u.status === 'pending' && <Button aria-label={s.approveAria(u.full_name)} loading={approve.isPending && approve.variables === u.id} onClick={() => approve.mutate(u.id)}>{s.approve}</Button>}
               <Button variant="secondary" aria-label={s.editAria(u.full_name)} onClick={() => setEditing(u)}><Pencil className="h-4 w-4" aria-hidden />{t.common.edit}</Button>
             </li>
           ))}

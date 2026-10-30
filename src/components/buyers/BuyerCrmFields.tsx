@@ -38,7 +38,7 @@ export function BuyerCrmFields({ f, set, errors }: {
   const text = (k: keyof BuyerInput) => (f[k] as string | null | undefined) ?? '';
   const chosen = f.interested_products ?? [];
   // Keep products the buyer already has even if they were archived or renamed in the catalogue.
-  const allNames = [...new Set([...names, ...chosen.filter((name) => isApprovedProduct(name.split(' (')[0] ?? name))])];
+  const allNames = [...new Set([...names, ...chosen.filter((name) => isApprovedProduct(name))])];
   const shown = find.trim() ? allNames.filter((n) => n.toLowerCase().includes(find.trim().toLowerCase())) : allNames;
 
   /** Adds or removes one product name from the interest list. */

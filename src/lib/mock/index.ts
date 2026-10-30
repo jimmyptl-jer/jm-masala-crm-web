@@ -8,9 +8,13 @@
  */
 import { ApiError } from '../api';
 import type {
-  Buyer, BuyerDetail, BuyerSummary, CalcResult, Currency, Dashboard, Product, QuoteDetail, QuoteListRow, Stage,
+  Buyer, BuyerDetail, BuyerSummary, CalcResult, Currency, Dashboard, FxRate, Inquiry, InquiryDetail, Product, QuoteDetail, QuoteListRow, Stage,
 } from '../types';
-import { BUYERS, ME, PRODUCTS, QUOTES, SETTINGS, TEAM, USERS } from './data';
+import { PARTNERS } from './partners';
+import { BUYERS, INQUIRIES, ME, PRODUCTS, QUOTES, SETTINGS, TEAM, USERS } from './data';
+
+/** Today's dollar rate in the sample data; nobody has set it until the first PUT /fx-rate. */
+const MOCK_FX: FxRate = { rate: null, rate_date: null, updated_by_name: null, updated_at: null, is_today: false };
 
 /** Contacts logged on buyers during this session (the mock keeps them in memory only). */
 const BUYER_ACTIVITIES = new Map<string, BuyerDetail['activities']>();
@@ -18,6 +22,7 @@ const BUYER_ACTIVITIES = new Map<string, BuyerDetail['activities']>();
 const STAGES: Stage[] = ['new_lead', 'contacted', 'qualified', 'requirements_received', 'quotation_sent', 'sample_requested',
   'sample_payment_pending', 'sample_dispatched', 'sample_approved', 'negotiation', 'po_received', 'won', 'lost'];
 
+type PartnerDetailActivity = (typeof PARTNERS)[number]['activities'][number];
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 const notFound = () => new ApiError(404, 'not_found', 'Not found (sample data)');
@@ -85,7 +90,7 @@ function dashboard(): Dashboard {
 function calc(): CalcResult {
   return {
     lines: [], subtotal: '0.00', discount: '0.00', freight: '0.00', insurance: '0.00', gst_total: '0.00', round_off: '0.00',
-    grand_total: '0.00', amount_words: '', tax_mode: 'none', margin: { total: null, pct: null, complete: false }, type: 'export',
+    grand_total: '0.00', amount_words: '', equivalent: null, tax_mode: 'none', margin: { total: null, pct: null, complete: false }, type: 'export',
     currency: 'USD', warnings: ['Totals are not calculated while the API is paused.'],
   };
 }
@@ -104,7 +109,29 @@ export async function mockRequest<T>(method: string, fullPath: string, body?: un
   if (method === 'GET' && path === '/team') return out({ data: TEAM });
   if (method === 'GET' && path === '/settings') return out(SETTINGS);
   if (method === 'GET' && path === '/send-channels') return out({ email: false, whatsapp: false });
+  // today's dollar rate: kept in memory like the rest of the sample data (the real API stores it)
+  if (path === '/fx-rate') {
+    if (method === 'PUT') {
+      const rate = Number(b.rate);
+      if (!Number.isFinite(rate) || rate <= 0) throw new ApiError(400, 'validation_error', 'Please check the highlighted fields.', { rate: 'Enter the rupees for one dollar, for example 83.45.' });
+      MOCK_FX.rate = rate.toFixed(4); MOCK_FX.rate_date = today(); MOCK_FX.updated_by_name = ME.full_name; MOCK_FX.updated_at = new Date().toISOString(); MOCK_FX.is_today = true;
+    }
+    return out(MOCK_FX);
+  }
   if (method === 'GET' && path === '/dashboard') return out(dashboard());
+
+  // ---- daily rates: new per-kg rates for several grades (the real API also writes the history) ----
+  if (seg[0] === 'daily-rates' && method === 'PUT') {
+    const changed: Product[] = [];
+    for (const r of ((b as { rates?: { id: string; ref_rate_usd: string | null; ref_rate_inr: string | null }[] }).rates ?? [])) {
+      const x = PRODUCTS.find((y) => y.id === r.id);
+      if (!x || x.archived) continue;
+      const fix = (v: string | null) => (v ? Number(v).toFixed(2) : null);
+      Object.assign(x, { ref_rate_usd: fix(r.ref_rate_usd), ref_rate_inr: fix(r.ref_rate_inr), rate_date: today(), updated_at: new Date().toISOString() });
+      changed.push(x);
+    }
+    return out({ data: changed, skipped: [] });
+  }
 
   // ---- products ----
   if (seg[0] === 'products') {
@@ -112,6 +139,18 @@ export async function mockRequest<T>(method: string, fullPath: string, body?: un
       const q = (params.get('q') ?? '').toLowerCase();
       const archived = params.get('archived') ?? 'false';
       return out({ data: PRODUCTS.filter((p) => (archived === 'all' || p.archived === (archived === 'true')) && (!q || p.name.toLowerCase().includes(q) || (p.grade ?? '').toLowerCase().includes(q))) });
+    }
+    if (method === 'GET' && seg[2] === 'rate-history') {
+      const x = PRODUCTS.find((y) => y.id === seg[1]);
+      if (!x) throw notFound();
+      return out({ data: x.rate_date ? [{ date: x.rate_date, ref_rate_usd: x.ref_rate_usd, ref_rate_inr: x.ref_rate_inr, set_by_name: ME.full_name, set_at: new Date().toISOString() }] : [] });
+    }
+    if (method === 'DELETE' && seg.length === 2) {
+      const i = PRODUCTS.findIndex((x) => x.id === seg[1]);
+      if (i < 0) throw notFound();
+      if (params.get('permanent') === '1') { PRODUCTS.splice(i, 1); return out({ deleted: true, product: null }); }
+      PRODUCTS[i]!.archived = true;
+      return out(PRODUCTS[i]);
     }
     if (method === 'GET' && seg[2] === 'price-hints') return out({ currency: params.get('currency') ?? 'USD', last_to_buyer: null, last_to_anyone: null, reference: null });
     if (method === 'POST' && seg.length === 1) {
@@ -124,6 +163,63 @@ export async function mockRequest<T>(method: string, fullPath: string, body?: un
       if (!p) throw notFound();
       Object.assign(p, b, { updated_at: new Date().toISOString() });
       return out(p);
+    }
+  }
+
+  // ---- partners (sample data; the real API also hides rates from sales users, the sample has none) ----
+  if (seg[0] === 'partners') {
+    const find = () => { const x = PARTNERS.find((y) => y.id === seg[1]); if (!x) throw notFound(); return x; };
+    if (method === 'GET' && seg.length === 1) {
+      const q = (params.get('q') ?? '').toLowerCase();
+      const archived = params.get('archived') ?? 'false';
+      return out({ data: PARTNERS.filter((x) => (archived === 'all' || x.archived === (archived === 'true')) && (!params.get('role') || x.roles.includes(params.get('role') as never)) && (!params.get('status') || x.status === params.get('status')) && (!q || [x.company_name, x.partner_code, x.city].some((f) => f?.toLowerCase().includes(q)))) });
+    }
+    if (method === 'GET' && seg.length === 2) return out(find());
+    if (method === 'POST' && seg.length === 1) {
+      const created = { ...PARTNERS[0]!, legal_name: null, email: null, phone: null, city: null, state: null, contacts: [], services: [], activities: [], last_interaction: null, activity_count: 0, status: 'active', ...(b as object), id: newId('pt'), partner_code: `PTY-${String(PARTNERS.length + 1).padStart(4, '0')}`, archived: false } as unknown as typeof PARTNERS[number];
+      PARTNERS.unshift(created);
+      return out(created);
+    }
+    if (method === 'PATCH' && seg.length === 2) { Object.assign(find(), b); return out(find()); }
+    if (method === 'POST' && seg[2] === 'activities') {
+      const x = find();
+      const a = { id: newId('pa'), user_id: ME.id, user_name: ME.full_name, happened_at: new Date().toISOString(), ...(b as object) } as PartnerDetailActivity;
+      x.activities.unshift(a); x.activity_count = x.activities.length; x.last_interaction = a.happened_at;
+      return out(a);
+    }
+  }
+
+  // ---- inquiries ----
+  if (seg[0] === 'inquiries') {
+    const nameOf = (id: string) => BUYERS.find((x) => x.id === id)?.company_name ?? '';
+    if (method === 'GET' && seg.length === 1) {
+      const q = (params.get('q') ?? '').toLowerCase();
+      const archived = params.get('archived') ?? 'false';
+      const rows = INQUIRIES.filter((x) =>
+        (archived === 'all' || x.archived === (archived === 'true')) && (!params.get('status') || x.status === params.get('status')) && (!params.get('buyer_id') || x.buyer_id === params.get('buyer_id')) &&
+        (!params.get('product') || x.products.some((p) => p.product_name === params.get('product'))) && (!params.get('assigned_to') || x.assigned_to === params.get('assigned_to')) &&
+        (!params.get('due') || (!!x.next_followup && x.next_followup <= today() && ['new', 'reviewing', 'quoted'].includes(x.status))) &&
+        (!q || [x.inquiry_code, x.buyer_name, x.destination_country, x.destination_port, ...x.products.map((p) => p.product_name)].some((f) => f?.toLowerCase().includes(q))));
+      return out({ data: [...rows].sort((a, b) => b.inquiry_date.localeCompare(a.inquiry_date)) });
+    }
+    if (method === 'GET' && seg.length === 2) {
+      const x = INQUIRIES.find((y) => y.id === seg[1]);
+      if (!x) throw notFound();
+      const detail: InquiryDetail = { ...x, quotes: x.id === 'i1' ? QUOTES.filter((qq) => qq.id === 'q2').map(listRow) : [], assigned_name: x.assigned_to ? 'Demo User' : null };
+      return out(detail);
+    }
+    if (method === 'POST' && seg.length === 1) {
+      const created = { inquiry_date: today(), destination_country: null, destination_port: null, currency: null, incoterm: null, source: null, original_message: null, status: 'new', assigned_to: null, next_followup: null, notes: null,
+        ...(b as object), id: newId('i'), inquiry_code: `INQ-${String(INQUIRIES.length + 1).padStart(4, '0')}`, buyer_name: nameOf((b as { buyer_id: string }).buyer_id), archived: false, quote_count: 0 } as Inquiry;
+      INQUIRIES.unshift(created);
+      return out(created);
+    }
+    if ((method === 'PATCH' || method === 'DELETE') && seg.length === 2) {
+      const x = INQUIRIES.find((y) => y.id === seg[1]);
+      if (!x) throw notFound();
+      Object.assign(x, method === 'DELETE' ? { archived: true } : b);
+      x.buyer_name = nameOf(x.buyer_id);
+      return out(x);
     }
   }
 
@@ -151,7 +247,7 @@ export async function mockRequest<T>(method: string, fullPath: string, body?: un
       return out(detail);
     }
     if (method === 'POST' && seg.length === 1) {
-      const created = { ...BUYERS[0]!, ...(b as object), id: newId('b'), archived: false, quote_count: 0, open_quotes: 0, last_contact_at: null } as Buyer;
+      const created = { ...BUYERS[0]!, ...(b as object), id: newId('b'), buyer_code: `BUY-${String(BUYERS.length + 1).padStart(4, '0')}`, archived: false, quote_count: 0, open_quotes: 0, last_contact_at: null } as Buyer;
       BUYERS.unshift(created);
       return out(created);
     }

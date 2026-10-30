@@ -1,30 +1,32 @@
 import clsx from 'clsx';
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Archive, ArrowDown, ArrowUp, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, Clock3, ExternalLink, Filter, Mail, MapPin, MoreHorizontal, Phone, Plus, Search, Users, X } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Archive, ArrowDown, ArrowUp, Building2, Check, ChevronDown, ChevronLeft, ChevronRight, CircleAlert, Clock3, ExternalLink, Filter, Mail, MapPin, MoreHorizontal, Pencil, Phone, Plus, Search, Users, X } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BuyerForm } from '@/components/BuyerForm';
-import { StagePill } from '@/components/buyers/StagePill';
 import { Button, EmptyState, ErrorNote, PageHeader, Select, Sheet, Spinner, StatusBadge, useToast } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useBuyerSummary, useBuyers, useDebounced, useTeam } from '@/lib/hooks';
 import { date, dateTime, todayIST } from '@/lib/format';
 import { APPROVED_PRODUCT_NAMES, isApprovedProduct } from '@/lib/products';
 import type { Buyer, BuyerDetail, BuyerSummary, QuoteList } from '@/lib/types';
-import { STAGES } from '@/lib/crm';
+import { STAGES, STATUS_STYLE, buyerStatus } from '@/lib/crm';
 import { t } from '@/strings';
 
-type SortKey = 'company' | 'country' | 'products' | 'stage' | 'contact' | 'followup';
+type SortKey = 'code' | 'company' | 'country' | 'type' | 'products' | 'source' | 'stage' | 'owner' | 'contact' | 'followup' | 'quotes';
 type DetailTab = 'Overview' | 'Contacts' | 'Requirements' | 'Quotations' | 'Activity';
 const PAGE_SIZE = 10;
 const stages = t.crm.stages;
+const CELL = 'border-t border-slate-200/75 px-3 py-3';
+const sourceLabel = (buyer: Buyer) => buyer.lead_source || (buyer.channel ? t.crm.channels[buyer.channel] : '—');
 const ownerLabel = (buyer: Buyer, team: { id: string; full_name: string }[]) => team.find((person) => person.id === buyer.assigned_to)?.full_name ?? 'Unassigned';
 
-function Metric({ icon, label, value, detail, tint }: { icon: React.ReactNode; label: string; value: number | string; detail: string; tint: string }) {
-  return <div className="glass-panel flex min-h-[104px] items-center gap-3 p-4">
+/** One summary tile; a button that opens whatever its number is made of (`opens` says what, for screen readers). */
+function Metric({ icon, label, value, detail, tint, onOpen, opens }: { icon: React.ReactNode; label: string; value: number | string; detail: string; tint: string; onOpen: () => void; opens: string }) {
+  return <button type="button" onClick={onOpen} aria-label={`${label}: ${value}. ${opens}`} className="glass-panel flex min-h-[104px] w-full items-center gap-3 p-4 text-left transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-paprika/40">
     <span className={clsx('grid h-12 w-12 shrink-0 place-items-center rounded-2xl [&>svg]:h-5 [&>svg]:w-5', tint)}>{icon}</span>
     <div className="min-w-0"><div className="text-sm font-medium text-slate-600">{label}</div><div className="mt-1 text-2xl font-bold leading-none tracking-tight text-crm-ink tabular-nums">{value}</div><div className="mt-1 truncate text-xs text-slate-500">{detail}</div></div>
-  </div>;
+  </button>;
 }
 
 export function FollowupPill({ value }: { value?: string | null }) {
@@ -90,7 +92,7 @@ export function BuyerDrawer({ id, onClose, onEdit }: { id: string; onClose: () =
 }
 
 function Fact({ label, value }: { label: string; value?: string | null }) { return <div className="min-w-0"><dt className="text-xs font-medium text-slate-500">{label}</dt><dd className="mt-1 break-words text-sm font-medium text-slate-800">{value || 'Not provided'}</dd></div>; }
-function Tags({ products }: { products: string[] }) { const safe = products.filter((item) => isApprovedProduct(item.split(' (')[0] ?? item)); return safe.length ? <div className="mt-3 flex flex-wrap gap-2">{safe.map((item) => <span key={item} className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">{item}</span>)}</div> : <p className="mt-2 text-sm text-slate-500">No product interests recorded.</p>; }
+function Tags({ products }: { products: string[] }) { const safe = products.filter((item) => isApprovedProduct(item)); return safe.length ? <div className="mt-3 flex flex-wrap gap-2">{safe.map((item) => <span key={item} className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-900">{item}</span>)}</div> : <p className="mt-2 text-sm text-slate-500">No product interests recorded.</p>; }
 
 export default function Buyers() {
   const [search, setSearch] = useState('');
@@ -104,11 +106,20 @@ export default function Buyers() {
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'company', desc: false });
   const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const navigate = useNavigate();
+  const [countriesOpen, setCountriesOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Buyer | null>(null);
   // /buyers?new=1 (the phone "+" menu) opens the Add buyer sheet straight away
-  const [navParams] = useSearchParams();
-  const [adding, setAdding] = useState(() => navParams.get('new') === '1');
+  const [navParams, setNavParams] = useSearchParams();
+  const [adding, setAdding] = useState(false);
+  // every visit to /buyers?new=1 opens the sheet, also when already on this page; the flag is removed from the address afterwards so
+  // the next "Add buyer" click is a real change again
+  useEffect(() => {
+    if (navParams.get('new') !== '1') return;
+    setAdding(true);
+    setNavParams((p) => { const next = new URLSearchParams(p); next.delete('new'); return next; }, { replace: true });
+  }, [navParams, setNavParams]);
   const qc = useQueryClient();
   const delayedSearch = useDebounced(search.trim(), 250);
   const buyersQuery = useBuyers({ archived: status === 'all' ? 'all' : status === 'archived' ? 'true' : 'false' });
@@ -121,11 +132,11 @@ export default function Buyers() {
   const countries = useMemo(() => [...new Set((status === 'archived' ? buyers : activeBuyers).map((item) => item.country).filter((value): value is string => !!value))].sort(), [buyers, activeBuyers, status]);
   const filtered = useMemo(() => buyers.filter((buyer) => {
     const q = delayedSearch.toLowerCase();
-    const searchable = [buyer.company_name, buyer.contact_name, buyer.email, buyer.country, buyer.city, ...buyer.interested_products].filter(Boolean).join(' ').toLowerCase();
+    const searchable = [buyer.buyer_code, buyer.company_name, buyer.contact_name, buyer.email, buyer.phone, buyer.whatsapp, buyer.country, buyer.city, ...buyer.interested_products].filter(Boolean).join(' ').toLowerCase();
     return (!q || searchable.includes(q)) && (!country || buyer.country === country) && (!stage || buyer.stage === stage) && (!product || buyer.interested_products.some((p) => p.toLowerCase().includes(product.toLowerCase()))) && (!owner || buyer.assigned_to === owner) && (!type || buyer.type === type) && (!dueOnly || (!!buyer.next_followup && buyer.next_followup <= todayIST()));
   }), [buyers, delayedSearch, country, stage, product, owner, type, dueOnly]);
   const sorted = useMemo(() => [...filtered].sort((a, b) => {
-    const val = (item: Buyer): string => sort.key === 'company' ? item.company_name : sort.key === 'country' ? item.country ?? '' : sort.key === 'products' ? item.interested_products.join(', ') : sort.key === 'stage' ? stages[item.stage] : sort.key === 'contact' ? item.last_contact_at ?? '' : item.next_followup ?? '';
+    const val = (item: Buyer): string => sort.key === 'code' ? item.buyer_code : sort.key === 'type' ? item.business_type ?? '' : sort.key === 'source' ? sourceLabel(item) : sort.key === 'owner' ? ownerLabel(item, team) : sort.key === 'quotes' ? String(item.quote_count).padStart(6, '0') : sort.key === 'company' ? item.company_name : sort.key === 'country' ? item.country ?? '' : sort.key === 'products' ? item.interested_products.join(', ') : sort.key === 'stage' ? t.crm.statuses[buyerStatus(item)] : sort.key === 'contact' ? item.last_contact_at ?? '' : item.next_followup ?? '';
     const cmp = val(a).localeCompare(val(b), undefined, { sensitivity: 'base' });
     return (sort.desc ? -1 : 1) * cmp;
   }), [filtered, sort]);
@@ -135,6 +146,17 @@ export default function Buyers() {
   const quotes = quotesQuery.data?.data ?? [];
   const activeCountries = new Set(activeBuyers.filter((b) => b.country).map((b) => b.country)).size;
   const allCurrentSelected = visible.length > 0 && visible.every((b) => selected.has(b.id));
+  /** Scrolls to the buyer table after a tile changed what it shows. */
+  const toTable = () => window.setTimeout(() => document.getElementById('buyers-table-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  /** "Total Buyers": every active buyer, with no filter. */
+  const showAll = () => { setSearch(''); setCountry(''); setStage(''); setProduct(''); setOwner(''); setType(''); setDueOnly(false); setStatus('active'); setPage(0); toTable(); };
+  /** Active buyers per country, most buyers first (the "Active Countries" list). */
+  const countryCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const b of activeBuyers) if (b.country) m.set(b.country, (m.get(b.country) ?? 0) + 1);
+    return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [activeBuyers]);
+  const pickCountry = (name: string) => { setStatus('active'); setCountry(name); setPage(0); setCountriesOpen(false); toTable(); };
   const toggleSort = (key: SortKey) => { setPage(0); setSort((current) => current.key === key ? { key, desc: !current.desc } : { key, desc: false }); };
   const sortButton = (key: SortKey, label: string) => <button type="button" onClick={() => toggleSort(key)} className="inline-flex items-center gap-1.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 hover:text-crm-ink">{label}{sort.key === key && (sort.desc ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />)}</button>;
   const toggleSelected = (id: string) => setSelected((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
@@ -150,10 +172,10 @@ export default function Buyers() {
     </div>
 
     <section aria-label="Buyer metrics" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Metric icon={<Users />} label="Total Buyers" value={activeBuyersQuery.isPending ? '—' : activeBuyers.length} detail="Active buyer records" tint="bg-surface-muted text-ink-muted" />
-      <Metric icon={<MapPin />} label="Active Countries" value={activeBuyersQuery.isPending ? '—' : activeCountries} detail="Countries with active buyers" tint="bg-surface-muted text-ink-muted" />
-      <Metric icon={<Building2 />} label="Quotations Sent" value={quotesQuery.data ? quotes.filter((q) => q.status === 'sent').length : (summary?.totals.open_quotations ?? '—')} detail={quotesQuery.data ? 'Awaiting a buyer response' : 'Open quotations'} tint="bg-surface-muted text-ink-muted" />
-      <Metric icon={<Check />} label="Won Deals" value={quotesQuery.data ? quotes.filter((q) => q.status === 'won').length : (summary?.totals.customers ?? '—')} detail="Won quotations" tint="bg-surface-muted text-ink-muted" />
+      <Metric icon={<Users />} label="Total Buyers" value={activeBuyersQuery.isPending ? '—' : activeBuyers.length} detail="Active buyer records" tint="bg-surface-muted text-ink-muted" opens="Show every active buyer" onOpen={showAll} />
+      <Metric icon={<MapPin />} label="Active Countries" value={activeBuyersQuery.isPending ? '—' : activeCountries} detail="Countries with active buyers" tint="bg-surface-muted text-ink-muted" opens="Choose a country" onOpen={() => setCountriesOpen(true)} />
+      <Metric icon={<Building2 />} label="Quotations Sent" value={quotesQuery.data ? quotes.filter((q) => q.status === 'sent').length : (summary?.totals.open_quotations ?? '—')} detail={quotesQuery.data ? 'Awaiting a buyer response' : 'Open quotations'} tint="bg-surface-muted text-ink-muted" opens="Open the sent quotations" onOpen={() => navigate('/quotes?status=sent')} />
+      <Metric icon={<Check />} label="Won Deals" value={quotesQuery.data ? quotes.filter((q) => q.status === 'won').length : (summary?.totals.customers ?? '—')} detail="Won quotations" tint="bg-surface-muted text-ink-muted" opens="Open the won quotations" onOpen={() => navigate('/quotes?status=won')} />
     </section>
 
     <section className="glass-panel overflow-hidden" aria-labelledby="buyers-table-heading">
@@ -167,31 +189,42 @@ export default function Buyers() {
         <Select label="Product interest" value={product} onChange={(e) => { setProduct(e.target.value); setPage(0); }}><option value="">All products</option>{APPROVED_PRODUCT_NAMES.map((item) => <option key={item}>{item}</option>)}</Select>
         <Select label="Owner" value={owner} onChange={(e) => { setOwner(e.target.value); setPage(0); }}><option value="">All owners</option>{team.map((person) => <option key={person.id} value={person.id}>{person.full_name}</option>)}</Select>
         <Select label="Status" value={status} onChange={(e) => { setStatus(e.target.value as typeof status); setPage(0); }}><option value="active">Active</option><option value="archived">Archived</option><option value="all">All statuses</option></Select>
-        <Select label="Buyer type" value={type} onChange={(e) => { setType(e.target.value); setPage(0); }}><option value="">All types</option><option value="export">Export</option><option value="domestic">Domestic</option></Select>
+        <Select label="Market" value={type} onChange={(e) => { setType(e.target.value); setPage(0); }}><option value="">All types</option><option value="export">Export</option><option value="domestic">Domestic</option></Select>
       </div>
       {selected.size > 0 && <div className="flex items-center justify-between gap-3 border-b border-blue-100 bg-blue-50/70 px-4 py-2 text-sm"><span className="font-medium text-crm-blue">{selected.size} selected</span><div className="flex gap-2"><button type="button" onClick={() => { const first = visible.find((b) => selected.has(b.id)); if (first) setDetailId(first.id); }} className="tap rounded-lg px-3 font-semibold text-crm-blue hover:bg-brand-50">View selected</button><button type="button" onClick={() => setSelected(new Set())} className="tap rounded-lg px-3 text-slate-600 hover:bg-brand-50">Clear selection</button></div></div>}
       {buyersQuery.isPending ? <Spinner label="Loading buyers" /> : buyersQuery.isError ? <div className="p-5"><ErrorNote error={buyersQuery.error} onRetry={() => void buyersQuery.refetch()} /></div> : visible.length === 0 ? <div className="px-4 py-12"><EmptyState title={search || country || stage || product || owner || type || dueOnly ? 'No buyers match these filters' : 'No buyers yet'}>{search || country || stage || product || owner || type || dueOnly ? <button type="button" onClick={() => { setSearch(''); setCountry(''); setStage(''); setProduct(''); setOwner(''); setType(''); setDueOnly(false); }} className="mt-2 font-semibold text-crm-blue underline">Clear filters</button> : <button type="button" onClick={() => setAdding(true)} className="mt-2 font-semibold text-crm-blue underline">Add your first buyer</button>}</EmptyState></div> : <>
-        <div className="overflow-x-auto"><table className="w-full min-w-[1120px] border-separate border-spacing-0 text-left text-sm">
+        <div className="overflow-x-auto"><table className="w-full min-w-[1500px] border-separate border-spacing-0 text-left text-sm">
           <thead className="bg-slate-50/95"><tr className="border-b border-slate-200">
             <th className="w-10 px-4 py-3"><input type="checkbox" aria-label="Select buyers on this page" checked={allCurrentSelected} onChange={(e) => setSelected((current) => { const next = new Set(current); visible.forEach((b) => e.target.checked ? next.add(b.id) : next.delete(b.id)); return next; })} className="h-4 w-4 rounded accent-crm-blue" /></th>
-            <th className="px-3 py-3">{sortButton('company', 'Company')}</th><th className="px-3 py-3">{sortButton('country', 'Country')}</th><th className="px-3 py-3">{sortButton('products', 'Main products')}</th><th className="px-3 py-3">{sortButton('stage', 'Stage')}</th><th className="px-3 py-3">{sortButton('contact', 'Last contact')}</th><th className="px-3 py-3">{sortButton('followup', 'Next follow-up')}</th><th className="px-3 py-3">Owner</th><th className="px-3 py-3 text-right">Actions</th>
+            <th className="px-3 py-3">{sortButton('code', 'Buyer ID')}</th><th className="px-3 py-3">{sortButton('company', 'Company')}</th><th className="px-3 py-3">{sortButton('country', 'Country / city')}</th><th className="px-3 py-3">Contact person</th><th className="px-3 py-3">Phone / WhatsApp</th><th className="px-3 py-3">{sortButton('type', 'Buyer type')}</th><th className="px-3 py-3">{sortButton('products', 'Interested products')}</th><th className="px-3 py-3">{sortButton('source', 'Lead source')}</th><th className="px-3 py-3">{sortButton('stage', 'Status')}</th><th className="px-3 py-3">{sortButton('owner', 'Assigned to')}</th><th className="px-3 py-3">{sortButton('contact', 'Last contacted')}</th><th className="px-3 py-3">{sortButton('followup', 'Next follow-up')}</th><th className="px-3 py-3 text-right">{sortButton('quotes', 'Quotations')}</th><th className="px-3 py-3 text-right">Actions</th>
           </tr></thead>
           <tbody>{visible.map((buyer) => <tr key={buyer.id} onClick={() => setDetailId(buyer.id)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailId(buyer.id); } }} tabIndex={0} className="cursor-pointer bg-surface transition-colors hover:bg-forest-50 focus-visible:bg-blue-50/80">
             <td className="border-t border-slate-200/75 px-4 py-3" onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Select ${buyer.company_name}`} checked={selected.has(buyer.id)} onChange={() => toggleSelected(buyer.id)} className="h-4 w-4 rounded accent-crm-blue" /></td>
-            <td className="border-t border-slate-200/75 px-3 py-3"><div className="font-semibold text-crm-ink">{buyer.company_name}</div><div className="mt-0.5 text-xs text-slate-500">{buyer.contact_name || 'Contact not set'}{buyer.email && <span> · {buyer.email}</span>}</div></td>
-            <td className="border-t border-slate-200/75 px-3 py-3"><div className="font-medium text-slate-700">{buyer.country || 'India'}</div><div className="text-xs text-slate-500">{buyer.city || buyer.state || '—'}</div></td>
-            <td className="border-t border-slate-200/75 px-3 py-3"><Tags products={buyer.interested_products} /></td>
-            <td className="border-t border-slate-200/75 px-3 py-3"><StagePill stage={buyer.stage} /></td>
-            <td className="border-t border-slate-200/75 px-3 py-3 text-slate-600">{buyer.last_contact_at ? date(buyer.last_contact_at) : 'No contact yet'}</td>
-            <td className="border-t border-slate-200/75 px-3 py-3"><FollowupPill value={buyer.next_followup} /></td>
-            <td className="border-t border-slate-200/75 px-3 py-3 text-slate-600">{ownerLabel(buyer, team)}</td>
-            <td className="border-t border-slate-200/75 px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}><div className="inline-flex items-center gap-1"><button type="button" aria-label={`Open ${buyer.company_name}`} onClick={() => setDetailId(buyer.id)} className="tap grid place-items-center rounded-lg text-slate-600 hover:bg-white"><ExternalLink className="h-4 w-4" /></button><Link to={`/quotes/new?buyer=${buyer.id}`} aria-label={`Create quotation for ${buyer.company_name}`} className="tap grid place-items-center rounded-lg text-crm-blue hover:bg-forest-50"><Plus className="h-4 w-4" /></Link><button type="button" aria-label={`More actions for ${buyer.company_name}`} onClick={() => setDetailId(buyer.id)} className="tap grid place-items-center rounded-lg text-slate-600 hover:bg-white"><MoreHorizontal className="h-4 w-4" /></button></div></td>
+            <td className={clsx(CELL, 'whitespace-nowrap font-mono text-xs font-semibold text-slate-600')}>{buyer.buyer_code}</td>
+            <td className={CELL}><div className="font-semibold text-crm-ink">{buyer.company_name}</div>{buyer.email && <div className="mt-0.5 text-xs text-slate-500">{buyer.email}</div>}</td>
+            <td className={CELL}><div className="font-medium text-slate-700">{buyer.country || 'India'}</div><div className="text-xs text-slate-500">{buyer.city || buyer.state || '—'}</div></td>
+            <td className={clsx(CELL, 'text-slate-700')}>{buyer.contact_name || <span className="text-slate-500">Not set</span>}</td>
+            <td className={clsx(CELL, 'whitespace-nowrap text-slate-600')}>{buyer.phone || buyer.whatsapp || '—'}{buyer.phone && buyer.whatsapp && buyer.whatsapp !== buyer.phone && <div className="text-xs text-slate-500">WA {buyer.whatsapp}</div>}</td>
+            <td className={clsx(CELL, 'text-slate-700')}>{buyer.business_type ? t.crm.businessTypes[buyer.business_type] : '—'}</td>
+            <td className={CELL}><Tags products={buyer.interested_products} /></td>
+            <td className={clsx(CELL, 'text-slate-600')}>{sourceLabel(buyer)}</td>
+            <td className={CELL}><span title={stages[buyer.stage]} className={clsx('inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold', STATUS_STYLE[buyerStatus(buyer)])}>{t.crm.statuses[buyerStatus(buyer)]}</span><div className="mt-0.5 text-xs text-slate-500">{stages[buyer.stage]}</div></td>
+            <td className={clsx(CELL, 'text-slate-600')}>{ownerLabel(buyer, team)}</td>
+            <td className={clsx(CELL, 'whitespace-nowrap text-slate-600')}>{buyer.last_contact_at ? date(buyer.last_contact_at) : 'No contact yet'}</td>
+            <td className={CELL}><FollowupPill value={buyer.next_followup} /></td>
+            <td className={clsx(CELL, 'text-right tabular-nums text-slate-700')}>{buyer.quote_count}</td>
+            <td className="border-t border-slate-200/75 px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}><div className="inline-flex items-center gap-1"><button type="button" aria-label={`Open ${buyer.company_name}`} onClick={() => setDetailId(buyer.id)} className="tap grid place-items-center rounded-lg text-slate-600 hover:bg-white"><ExternalLink className="h-4 w-4" /></button><button type="button" aria-label={`Edit ${buyer.company_name}`} onClick={() => setEditing(buyer)} className="tap grid place-items-center rounded-lg text-slate-600 hover:bg-white"><Pencil className="h-4 w-4" /></button><Link to={`/quotes/new?buyer=${buyer.id}`} aria-label={`Create quotation for ${buyer.company_name}`} className="tap grid place-items-center rounded-lg text-crm-blue hover:bg-forest-50"><Plus className="h-4 w-4" /></Link><button type="button" aria-label={`More actions for ${buyer.company_name}`} onClick={() => setDetailId(buyer.id)} className="tap grid place-items-center rounded-lg text-slate-600 hover:bg-white"><MoreHorizontal className="h-4 w-4" /></button></div></td>
           </tr>)}</tbody>
         </table></div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/75 bg-surface px-4 py-3 text-sm text-slate-600"><span>{range}</span><div className="flex items-center gap-2"><button type="button" disabled={page === 0} onClick={() => setPage((value) => Math.max(0, value - 1))} className="tap inline-flex items-center gap-1 rounded-lg border border-line-strong bg-surface px-3 font-medium disabled:opacity-45"><ChevronLeft className="h-4 w-4" />Previous</button><span className="px-1">Page {page + 1} of {pageCount}</span><button type="button" disabled={page >= pageCount - 1} onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))} className="tap inline-flex items-center gap-1 rounded-lg border border-line-strong bg-surface px-3 font-medium disabled:opacity-45">Next<ChevronRight className="h-4 w-4" /></button></div></div>
       </>}
     </section>
 
+    <Sheet open={countriesOpen} onClose={() => setCountriesOpen(false)} title="Active countries">
+      {countryCounts.length === 0 ? <p className="text-sm text-slate-500">No buyer has a country yet.</p> : <ul className="divide-y divide-line rounded-xl border border-line">{countryCounts.map(([name, n]) => (
+        <li key={name}><button type="button" onClick={() => pickCountry(name)} className="tap flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-surface-hover"><span className="font-semibold text-crm-ink">{name}</span><span className="text-sm tabular-nums text-slate-600">{n} {n === 1 ? 'buyer' : 'buyers'}</span></button></li>
+      ))}</ul>}
+    </Sheet>
     {detailId && <BuyerDrawer key={detailId} id={detailId} onClose={() => setDetailId(null)} onEdit={(buyer) => { setEditing(buyer); }} />}
     <Sheet wide open={adding} onClose={() => setAdding(false)} title="Add buyer"><BuyerForm onCancel={() => setAdding(false)} onSaved={() => { setAdding(false); void buyersQuery.refetch(); void activeBuyersQuery.refetch(); void summaryQuery.refetch(); }} /></Sheet>
     <Sheet wide open={!!editing} onClose={() => setEditing(null)} title="Edit buyer"><BuyerForm initial={editing ?? undefined} onCancel={() => setEditing(null)} onSaved={(buyer) => { setEditing(null); setDetailId(buyer.id); void qc.invalidateQueries({ queryKey: ['buyer', buyer.id] }); void buyersQuery.refetch(); void activeBuyersQuery.refetch(); void summaryQuery.refetch(); }} /></Sheet>

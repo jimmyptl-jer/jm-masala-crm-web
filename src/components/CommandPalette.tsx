@@ -9,7 +9,7 @@ import { Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, qs } from '@/lib/api';
-import { useBuyers, useDebounced } from '@/lib/hooks';
+import { useBuyers, useDebounced, usePartners } from '@/lib/hooks';
 import type { QuoteList } from '@/lib/types';
 import { t } from '@/strings';
 
@@ -30,6 +30,7 @@ export function CommandPalette({ open, onClose, pages }: { open: boolean; onClos
   const input = useRef<HTMLInputElement>(null);
   const q = useDebounced(text.trim(), 250);
   const buyers = useBuyers({ archived: 'false' });
+  const partners = usePartners({ archived: 'false' });
   const quotes = useQuery({
     queryKey: ['quotes', 'palette', q],
     queryFn: () => api.get<QuoteList>(`/quotes${qs({ q, limit: 5 })}`),
@@ -46,9 +47,13 @@ export function CommandPalette({ open, onClose, pages }: { open: boolean; onClos
       (buyers.data ?? []).filter((b) => [b.company_name, b.contact_name, b.country, b.city].filter(Boolean).join(' ').toLowerCase().includes(needle)).slice(0, 5)
         .forEach((b) => out.push({ key: `b-${b.id}`, group: n.paletteBuyers, label: b.company_name, sub: [b.city, b.country].filter(Boolean).join(', ') || undefined, to: `/buyers/${b.id}` }));
     }
+    if (needle.length >= 1) {
+      (partners.data ?? []).filter((p) => [p.company_name, p.partner_code, p.city, ...p.contacts.map((c) => c.name)].filter(Boolean).join(' ').toLowerCase().includes(needle)).slice(0, 5)
+        .forEach((p) => out.push({ key: `pt-${p.id}`, group: n.palettePartners, label: p.company_name, sub: t.partners.paletteSub(p.partner_code, [p.city, p.state].filter(Boolean).join(', ')), to: `/partners/${p.id}` }));
+    }
     (q.length >= 2 ? quotes.data?.data ?? [] : []).forEach((x) => out.push({ key: `q-${x.id}`, group: n.paletteQuotes, label: x.number ?? t.quotes.draftNumber, sub: x.buyer_name, to: x.latest_state === 'draft' && x.quote_no === null ? `/quotes/${x.id}/edit` : `/quotes/${x.id}` }));
     return out;
-  }, [text, q, pages, buyers.data, quotes.data]);
+  }, [text, q, pages, buyers.data, partners.data, quotes.data]);
 
   useEffect(() => { setIndex(0); }, [text]);
 

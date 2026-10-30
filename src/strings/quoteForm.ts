@@ -150,6 +150,15 @@ export const quoteForm = {
   marginCheck: (pct: string) => `Margin ${pct}%`,
   marginOk: 'Healthy', marginWarn: 'Tight', marginLow: 'Very low',
   previewSheetTitle: 'Quotation preview',
+  // the draft page and e-mail made by the API (components/quoteform/ApiQuotePreview.tsx)
+  apiPreviewTabDoc: 'Quotation', apiPreviewTabEmail: 'E-mail to the buyer', apiPreviewFrame: 'Quotation as it will be sent',
+  apiPreviewHint: 'This is exactly what the buyer will get. The number and date are fixed when you press Finalise and send; the PDF is made then.',
+  emailTo: 'To', emailSubject: 'Subject', emailNoAddress: 'This buyer has no e-mail address. Add one to the buyer before sending.',
+  emailBody: 'Message',
+  // value of the total at today's dollar rate (summary panel)
+  equivalentInr: (amount: string, rate: string) => `≈ ₹${amount} at ₹${rate} per US$1`,
+  equivalentUsd: (amount: string, rate: string) => `≈ US$${amount} at ₹${rate} per US$1`,
+  noRateHint: "Enter today's dollar rate on the dashboard to see the rupee value and the margin.",
   secBuyer: 'Buyer', secShipment: 'Shipment', secProducts: 'Products', secPayment: 'Payment, terms and notes',
   quoteTotal: 'Quote total', addProductsHint: 'add products', checklistLabel: 'Before you finalise',
   completeItems: (n: number) => (n === 1 ? 'Complete 1 item to continue' : `Complete ${n} items to continue`),

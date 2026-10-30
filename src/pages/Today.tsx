@@ -1,9 +1,11 @@
 /**
  * Dashboard (route `/`): a daily sales cockpit. Who to chase today, which products buyers want, and who is going cold.
- * Layout follows the supplied dashboard mockup and DESIGN_SYSTEM.md (white + paprika).
+ * Layout follows the supplied dashboard mockup and DESIGN_SYSTEM.md (white + paprika). The four cards at the top are buttons: each opens its
+ * own tab below (chase list, overdue follow-ups, new enquiries, going cold); a fifth tab, Daily rates, holds the per-kg rate of every grade
+ * (components/products/DailyRates.tsx, the same table as the Daily rates page).
  *
  * API: GET /buyers (useBuyers), GET /dashboard (quote follow-ups due), GET /quotes?limit=100 (sent quotes that end soon),
- * GET /products (reference prices). Marking a buyer done / logging a contact does POST /buyers/:id/activities (a logged
+ * GET /products (reference prices). The box at the top is today's dollar rate (components/FxRateBar.tsx: GET and PUT /fx-rate). Marking a buyer done / logging a contact does POST /buyers/:id/activities (a logged
  * contact, which the API will use to update the buyer's last contact) and PATCH /buyers/:id (next follow-up and action),
  * then refreshes ['buyers'], ['quotes'] and ['dashboard']. The mock implements POST /buyers/:id/activities; the real API still has to.
  * The chase rules live in lib/chase.ts. "Done today" is remembered in this browser (localStorage 'jm.chase.done.<date>').
@@ -16,6 +18,9 @@ import { Check, MessageCircle, Phone } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
+import { FxRateBar } from '@/components/FxRateBar';
+import { DailyRates } from '@/components/products/DailyRates';
+import { ColdPanel, IconAction, NewEnquiriesPanel, wantsOf } from '@/components/today/TodayPanels';
 import { Button, EmptyState, ErrorNote, Input, Select, Sheet, Spinner, Textarea, errorMessage, useToast } from '@/components/ui';
 import { api } from '@/lib/api';
 import { buildChase, goingCold, type ChaseKind, type ChaseRow, type ChaseTone } from '@/lib/chase';
@@ -28,6 +33,7 @@ const c = t.today;
 /** The filter chips; "follow-up today" rows only show under All. */
 type Filter = 'all' | Exclude<ChaseKind, 'today'>;
 const FILTERS: Filter[] = ['all', 'overdue', 'quote', 'sample', 'new'];
+type Tab = 'chase' | 'overdue' | 'new' | 'cold' | 'rates';
 const KINDS: ActivityKind[] = ['call', 'whatsapp', 'email', 'meeting', 'note'];
 
 /** Morning, afternoon or evening for the current hour in India (NFR-12). */
@@ -35,9 +41,6 @@ function dayPart(): 'morning' | 'afternoon' | 'evening' {
   const hour = Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' }).format(new Date())) % 24;
   return hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
 }
-
-/** Product names a buyer wants, without any grade suffix like "Cumin Seeds (Europe)". */
-const wantsOf = (b: Buyer) => b.interested_products.map((x) => x.split(' (')[0] ?? x);
 
 /** Badge classes for a chase reason (status colours). */
 const TONE: Record<ChaseTone, string> = {
@@ -58,9 +61,10 @@ function useDoneToday(today: string) {
 }
 
 /** One KPI card; the hero card has the paprika border and number and an optional progress bar. */
-function Kpi({ label, value, sub, hero, tone, progress, subTone }: { label: string; value: number; sub: string; hero?: boolean; tone?: 'danger'; progress?: number; subTone?: 'warning' }) {
+function Kpi({ label, value, sub, hero, tone, progress, subTone, active, onOpen }: { label: string; value: number; sub: string; hero?: boolean; tone?: 'danger'; progress?: number; subTone?: 'warning'; active?: boolean; onOpen: () => void }) {
   return (
-    <div className={clsx('rounded-xl border bg-surface p-5 shadow-card', hero ? 'border-paprika-200' : 'border-line')}>
+    <button type="button" onClick={onOpen} aria-pressed={active} aria-label={c.openCard(label)}
+      className={clsx('block w-full rounded-xl border bg-surface p-5 text-left shadow-card transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-paprika/40', active ? 'border-paprika ring-1 ring-paprika/30' : hero ? 'border-paprika-200' : 'border-line')}>
       <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-ink-muted">{label}</p>
       <p className={clsx('mt-2 text-[28px] font-bold leading-8 tabular-nums', hero ? 'text-paprika' : tone === 'danger' ? 'text-danger-ink' : 'text-ink')}>{value}</p>
       <p className={clsx('mt-1 text-sm', subTone === 'warning' ? 'text-warning-ink' : 'text-ink-muted')}>{sub}</p>
@@ -69,16 +73,8 @@ function Kpi({ label, value, sub, hero, tone, progress, subTone }: { label: stri
           <div className="h-full rounded-full bg-paprika" style={{ width: `${Math.round(progress * 100)}%` }} />
         </div>
       )}
-    </div>
+    </button>
   );
-}
-
-/** Square icon button of a chase row (WhatsApp is tinted green); a disabled one when there is no number. */
-function IconAction({ href, label, tint, disabled, children, onClick, newTab }: { href?: string; label: string; tint?: boolean; disabled?: boolean; children: React.ReactNode; onClick?: () => void; newTab?: boolean }) {
-  const cls = clsx('tap grid h-9 w-9 place-items-center rounded-lg border', tint ? 'border-success-bg bg-success-bg text-success-ink hover:border-success' : 'border-line bg-surface text-ink-secondary hover:bg-surface-hover', disabled && 'cursor-not-allowed opacity-50');
-  if (disabled) return <button type="button" disabled aria-label={label} title={c.noPhone} className={cls}>{children}</button>;
-  if (href) return <a href={href} aria-label={label} title={label} className={cls} {...(newTab ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{children}</a>;
-  return <button type="button" onClick={onClick} aria-label={label} title={label} className={cls}>{children}</button>;
 }
 
 /** Sheet used by both "Mark as done" and "+ Log contact": how you contacted them, what happened, and (done only) the next follow-up. */
@@ -154,6 +150,7 @@ export default function Today() {
   const today = todayIST();
   const [scope, setScope] = useState<'me' | 'team'>('me');
   const [filter, setFilter] = useState<Filter>('all');
+  const [tab, setTab] = useState<Tab>('chase');
   const [sheet, setSheet] = useState<{ mode: 'done' | 'log'; buyer?: Buyer } | null>(null);
   const { done, add } = useDoneToday(today);
 
@@ -176,6 +173,7 @@ export default function Today() {
   const notReplied = newBuyers.filter((b) => !b.last_contact_at).length;
   const waiting = quotes.filter((q) => mineIds.has(q.buyer_id) && q.status === 'sent').length;
   const shown = filter === 'all' ? chase : chase.filter((r) => r.kind === filter);
+  const overdueRows = chase.filter((r) => r.kind === 'overdue');
   const counts = (f: Filter) => (f === 'all' ? chase.length : chase.filter((r) => r.kind === f).length);
 
   // demand per approved product: how many live buyers want it, with a reference price from the product list
@@ -191,6 +189,7 @@ export default function Today() {
 
   return (
     <div className="space-y-5">
+      <FxRateBar />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold leading-8 tracking-tight text-ink">{c.greeting(dayPart(), name)}</h1>
@@ -213,41 +212,57 @@ export default function Today() {
       {!loading && !buyersQ.isError && (
         <>
           <section aria-label={c.kpiLabel} className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-            <Kpi hero label={c.kpiChase} value={left} sub={c.kpiChaseSub(doneNow, left)} progress={total > 0 ? doneNow / total : 0} />
-            <Kpi label={c.kpiOverdue} value={overdue} tone="danger" sub={c.kpiOverdueSub} />
-            <Kpi label={c.kpiNew} value={newBuyers.length} sub={notReplied > 0 ? c.kpiNewSub(notReplied) : c.kpiNewNone} subTone={notReplied > 0 ? 'warning' : undefined} />
-            <Kpi label={c.kpiCold} value={cold.length} sub={c.kpiColdSub} />
+            <Kpi hero label={c.kpiChase} value={left} sub={c.kpiChaseSub(doneNow, left)} progress={total > 0 ? doneNow / total : 0} active={tab === 'chase'} onOpen={() => { setFilter('all'); setTab('chase'); }} />
+            <Kpi label={c.kpiOverdue} value={overdue} tone="danger" sub={c.kpiOverdueSub} active={tab === 'overdue'} onOpen={() => setTab('overdue')} />
+            <Kpi label={c.kpiNew} value={newBuyers.length} sub={notReplied > 0 ? c.kpiNewSub(notReplied) : c.kpiNewNone} subTone={notReplied > 0 ? 'warning' : undefined} active={tab === 'new'} onOpen={() => setTab('new')} />
+            <Kpi label={c.kpiCold} value={cold.length} sub={c.kpiColdSub} active={tab === 'cold'} onOpen={() => setTab('cold')} />
           </section>
 
-          {/* chase list */}
-          <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-card" aria-labelledby="chase-h">
-            <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4">
-              <h2 id="chase-h" className="text-[17px] font-bold leading-6 text-ink">{c.chaseTitle}</h2>
-              <div role="group" aria-label={c.filtersLabel} className="flex flex-wrap gap-1">
-                {FILTERS.map((f) => (
-                  <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}
-                    className={clsx('tap rounded-full px-3 text-sm font-bold', filter === f ? 'bg-paprika-50 text-paprika-700' : 'text-ink-muted hover:bg-surface-hover hover:text-ink')}>
-                    {c.filters[f]}{f === 'all' ? ` ${counts(f)}` : ''}
-                  </button>
-                ))}
-              </div>
+          {/* the tabs: the cards above open the first four, "Daily rates" is the fifth */}
+          <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-card" aria-label={c.tabsLabel}>
+            <div role="tablist" aria-label={c.tabsLabel} className="flex gap-1 overflow-x-auto border-b border-line px-3">
+              {([['chase', c.tabChase, left], ['overdue', c.tabOverdue, overdue], ['new', c.tabNew, newBuyers.length], ['cold', c.tabCold, cold.length], ['rates', c.tabRates, null]] as const).map(([key, label, count]) => (
+                <button key={key} type="button" role="tab" id={`tab-${key}`} aria-selected={tab === key} aria-controls="today-panel" onClick={() => setTab(key)}
+                  className={clsx('tap -mb-px whitespace-nowrap border-b-2 px-4 text-sm font-bold', tab === key ? 'border-paprika text-paprika' : 'border-transparent text-ink-muted hover:text-ink')}>{label}{count !== null ? ` ${count}` : ''}</button>
+              ))}
             </div>
-            {shown.length === 0 ? (
-              <div className="border-t border-line px-5 py-8"><EmptyState title={c.chaseEmpty}>{c.chaseEmptyHint}</EmptyState></div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[820px] text-left text-[13.5px]">
-                  <thead className="border-y border-line bg-surface-muted">
-                    <tr className="h-9 text-[11px] font-bold uppercase tracking-[0.05em] text-ink-muted">
-                      <th className="px-5">{c.colBuyer}</th><th className="px-3">{c.colWants}</th><th className="px-3">{c.colLast}</th><th className="px-3">{c.colWhy}</th><th className="px-5 text-right">{c.colAction}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line">
-                    {shown.map((r) => <ChaseLine key={r.buyer.id} row={r} onDone={() => setSheet({ mode: 'done', buyer: r.buyer })} onQuote={() => navigate(`/quotes/new?buyer=${r.buyer.id}`)} />)}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <div role="tabpanel" id="today-panel" aria-labelledby={`tab-${tab}`}>
+              {tab === 'chase' && (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4">
+                    <h2 id="chase-h" className="text-[17px] font-bold leading-6 text-ink">{c.chaseTitle}</h2>
+                    <div role="group" aria-label={c.filtersLabel} className="flex flex-wrap gap-1">
+                      {FILTERS.map((f) => (
+                        <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}
+                          className={clsx('tap rounded-full px-3 text-sm font-bold', filter === f ? 'bg-paprika-50 text-paprika-700' : 'text-ink-muted hover:bg-surface-hover hover:text-ink')}>
+                          {c.filters[f]}{f === 'all' ? ` ${counts(f)}` : ''}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <ChaseTable rows={shown} onDone={(b) => setSheet({ mode: 'done', buyer: b })} onQuote={(b) => navigate(`/quotes/new?buyer=${b.id}`)} />
+                </>
+              )}
+              {tab === 'overdue' && (
+                <>
+                  <div className="px-5 py-4"><h2 className="text-[17px] font-bold leading-6 text-ink">{c.overdueTitle}</h2><p className="text-sm text-ink-muted">{c.overdueHint}</p></div>
+                  <ChaseTable rows={overdueRows} onDone={(b) => setSheet({ mode: 'done', buyer: b })} onQuote={(b) => navigate(`/quotes/new?buyer=${b.id}`)} />
+                </>
+              )}
+              {tab === 'new' && (
+                <>
+                  <div className="px-5 py-4"><h2 className="text-[17px] font-bold leading-6 text-ink">{c.newTitle}</h2><p className="text-sm text-ink-muted">{c.newHint}</p></div>
+                  <NewEnquiriesPanel buyers={newBuyers} onQuote={(b) => navigate(`/quotes/new?buyer=${b.id}`)} />
+                </>
+              )}
+              {tab === 'cold' && (
+                <>
+                  <div className="px-5 py-4"><h2 className="text-[17px] font-bold leading-6 text-ink">{c.coldTitle}</h2><p className="text-sm text-ink-muted">{c.coldHint}</p></div>
+                  <ColdPanel rows={cold} />
+                </>
+              )}
+              {tab === 'rates' && <DailyRates embedded />}
+            </div>
           </section>
 
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
@@ -269,7 +284,7 @@ export default function Today() {
                       <tr key={d.name} className="h-[60px]">
                         <td className="px-5"><div className="font-bold text-ink">{d.name}</div><div className="text-xs text-ink-muted">{c.buyers(d.n)}</div></td>
                         <td className="px-3"><div className="flex items-center gap-3"><div className="h-1.5 w-full max-w-[12rem] overflow-hidden rounded-full bg-surface-muted"><div className="h-full rounded-full bg-paprika" style={{ width: `${(d.n / maxDemand) * 100}%` }} /></div><span className="w-6 tabular-nums text-ink-secondary">{d.n}</span></div></td>
-                        <td className="px-5 text-right">{d.product ? <><div className="num font-bold text-ink">{money(d.product.ref_rate_usd, 'USD')}</div><div className="text-xs text-ink-muted">{c.perUnit(d.product.unit)}</div></> : <span className="text-xs text-ink-muted">{c.noPrice}</span>}</td>
+                        <td className="px-5 text-right">{d.product ? <><div className="num font-bold text-ink">{money(d.product.ref_rate_usd, 'USD')}</div><div className="text-xs text-ink-muted">{c.perUnit('KG')}</div></> : <span className="text-xs text-ink-muted">{c.noPrice}</span>}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -337,5 +352,24 @@ function ChaseLine({ row, onDone, onQuote }: { row: ChaseRow; onDone: () => void
         </div>
       </td>
     </tr>
+  );
+}
+
+/** The chase table (also used by the Overdue tab): one ChaseLine per row, or the empty message. */
+function ChaseTable({ rows, onDone, onQuote }: { rows: ChaseRow[]; onDone: (b: Buyer) => void; onQuote: (b: Buyer) => void }) {
+  if (rows.length === 0) return <div className="border-t border-line px-5 py-8"><EmptyState title={c.chaseEmpty}>{c.chaseEmptyHint}</EmptyState></div>;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[820px] text-left text-[13.5px]">
+        <thead className="border-y border-line bg-surface-muted">
+          <tr className="h-9 text-[11px] font-bold uppercase tracking-[0.05em] text-ink-muted">
+            <th className="px-5">{c.colBuyer}</th><th className="px-3">{c.colWants}</th><th className="px-3">{c.colLast}</th><th className="px-3">{c.colWhy}</th><th className="px-5 text-right">{c.colAction}</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {rows.map((r) => <ChaseLine key={r.buyer.id} row={r} onDone={() => onDone(r.buyer)} onQuote={() => onQuote(r.buyer)} />)}
+        </tbody>
+      </table>
+    </div>
   );
 }

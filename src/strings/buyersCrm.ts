@@ -1,6 +1,7 @@
 // Strings for the Buyer CRM parts of the buyer screens: lead source, pipeline, requirements, follow-up, performance.
 import type { StageGroup } from '@/lib/crm';
 import type { BusinessType, Channel, Stage } from '@/lib/types';
+import type { BuyerStatus } from '@/lib/crm';
 
 export const crm = {
   // list filters and badges
@@ -142,7 +143,8 @@ export const crm = {
     direct: 'Direct importer / distributor', marketplace: 'B2B marketplace', website: 'Website / search', trade_fair: 'Trade fair',
     linkedin: 'LinkedIn / outbound', referral: 'Referral / wholesale network', other: 'Other',
   } satisfies Record<Channel, string>,
+  statuses: { lead: 'Lead', contacted: 'Contacted', qualified: 'Qualified', active: 'Active', inactive: 'Inactive' } satisfies Record<BuyerStatus, string>,
   businessTypes: {
-    importer: 'Importer', distributor: 'Distributor', wholesaler: 'Wholesaler', retailer: 'Retailer', manufacturer: 'Manufacturer', trader: 'Trading company',
+    importer: 'Importer', distributor: 'Distributor', wholesaler: 'Wholesaler', retailer: 'Retailer', manufacturer: 'Manufacturer', trader: 'Trading company', agent: 'Agent',
   } satisfies Record<BusinessType, string>,
 } as const;

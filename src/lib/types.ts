@@ -41,7 +41,7 @@ export type ActivityKind = 'call' | 'whatsapp' | 'email' | 'meeting' | 'note' | 
 export interface Me { id: string; email: string | null; role: Role; full_name: string; phone?: string | null }
 
 /** One user in the admin Users list, from GET /users (admin only): profile plus login email and phone. */
-export interface UserRow { id: string; full_name: string; role: Role; phone: string | null; email: string | null }
+export interface UserRow { id: string; full_name: string; role: Role; phone: string | null; email: string | null; active?: boolean; /** pending = signed up, waiting for an administrator */ status?: 'active' | 'pending' | 'inactive' }
 
 /**
  * A customer (buyer), from GET /buyers (list), GET /buyers/:id (detail, see BuyerDetail) and embedded in a
@@ -49,6 +49,8 @@ export interface UserRow { id: string; full_name: string; role: Role; phone: str
  */
 export interface Buyer {
   id: string;
+  /** Readable sequential id shown to people, e.g. 'BUY-0001'; given by the API. */
+  buyer_code: string;
   /** Export or domestic; decides which of the fields below apply and the quote currency rules. */
   type: QuoteType;
   company_name: string;
@@ -126,7 +128,7 @@ export type Stage =
 /** Lead channel category. */
 export type Channel = 'direct' | 'marketplace' | 'website' | 'trade_fair' | 'linkedin' | 'referral' | 'other';
 /** Kind of business. */
-export type BusinessType = 'importer' | 'distributor' | 'wholesaler' | 'retailer' | 'manufacturer' | 'trader';
+export type BusinessType = 'importer' | 'distributor' | 'wholesaler' | 'retailer' | 'manufacturer' | 'trader' | 'agent';
 
 /** One currency's money for a lead channel (decimal strings; never added across currencies). */
 export interface ChannelMoney { currency: Currency; quoted: string; won: string; profit: string }
@@ -216,14 +218,23 @@ export interface Product {
   /** HSN code, used on domestic (GST) quotes. */
   hsn_code: string | null;
   /** GST percent as a decimal string, e.g. '5.00' (domestic quotes only; export has no GST, BR-06). */
-  gst_rate: string;
+  /** GST percent, decimal string; null only while the product is a draft. */
+  gst_rate: string | null;
+  /** Short code of the product shared by all its grades, e.g. 'SPC-CUM'; null when none was set. */
+  product_code?: string | null;
+  /** Whole Spices, Ground Spices, Oilseeds, Dried Spices or Seeds & Plant Products (set by the API from the name). */
+  category?: string;
+  /** 'draft' until the record has been checked; only active products are offered on quotations. Missing = active. */
+  status?: 'draft' | 'active';
   /** Unit of measure for quantity and rate: metric tonne, kilogram or quintal. */
   unit: 'MT' | 'KG' | 'QTL';
   /** Packing descriptions offered on a quote line; the first is the default. Empty array when none. */
   packing_options: string[];
-  /** Indicative selling rate per unit in USD / INR (decimal string), used as a price hint; null if unset. */
+  /** Current selling rate per KILOGRAM in USD / INR (decimal string); null if unset. Changed on the Daily rates tab or in the grade form. */
   ref_rate_usd: string | null;
   ref_rate_inr: string | null;
+  /** 'YYYY-MM-DD' of the last time a rate was set; null when it never was. */
+  rate_date?: string | null;
   /** True when hidden from the quote form picker (BR-12); old quotes still show it. */
   archived: boolean;
   /** ISO timestamp of the last change. */
@@ -283,6 +294,8 @@ export interface QuoteListRow {
   grand_total: string | null;
   currency: Currency | null;
   buyer_id: string;
+  /** The inquiry this quote answers; null when it did not start from one. */
+  inquiry_id?: string | null;
   buyer_name: string;
   /** The distinct product names on the quote joined into one text; null when it has no lines. */
   products: string | null;
@@ -429,7 +442,28 @@ export interface QuoteDetail {
   warnings?: string[];
   /** Result of making the PDF. Only on the issue answer: a failed PDF does not fail the issue. */
   pdf?: { status: 'ready' | 'failed'; error?: string };
+  /** The finished quotation page and the e-mail Send will deliver, made by the API. Only on the save answers (POST /quotes, PUT /quotes/:id/draft). */
+  document?: DocumentPreview;
 }
+
+/**
+ * What the user checks before sending, made entirely by the API (GET /quotes/:id/revisions/:rev/document and the save answers):
+ * `html` is the whole quotation page in the letterhead format, shown in a frame as it is; `email` is the message Send will deliver
+ * (`to` is null when the buyer has no e-mail address). Never contains cost or margin.
+ */
+export interface DocumentPreview {
+  revision: number;
+  /** True while the revision is an open draft (the page carries a DRAFT banner). */
+  draft: boolean;
+  html: string;
+  email: { to: string | null; subject: string; text: string; html: string };
+}
+
+/**
+ * Today's dollar rate from GET /fx-rate and PUT /fx-rate: rupees for one US dollar as a decimal string with 4 places. `rate` is null until
+ * someone sets it; `is_today` is false when the saved rate is from an earlier India day (the screen asks for today's rate).
+ */
+export interface FxRate { rate: string | null; rate_date: string | null; updated_by_name: string | null; updated_at: string | null; is_today: boolean }
 
 /**
  * Body for POST /quotes, PUT /quotes/:id/draft and POST /quotes/calculate.
@@ -475,6 +509,8 @@ export interface CalcResult {
   round_off: string;
   grand_total: string;
   amount_words: string;
+  /** The total in the other currency at today's dollar rate: rupees for a USD quote, dollars for an INR quote; null without a rate or for other currencies. */
+  equivalent: { currency: 'INR' | 'USD'; amount: string; rate: string } | null;
   /** 'none' = export (no GST); 'intra' = same state (CGST + SGST); 'inter' = other state (IGST). */
   tax_mode: 'none' | 'intra' | 'inter';
   margin: Margin;
@@ -808,3 +844,56 @@ export interface TradeImportRow {
   id: string; kind: ImportKind; filename: string | null; source: string; rows_total: number; rows_saved: number; rows_skipped: number;
   created_at: string; created_by_name: string | null;
 }
+
+/** Where an inquiry stands; 'quoted' once a quotation exists for it. Labels: strings/inquiries.ts. */
+export type InquiryStatus = 'new' | 'reviewing' | 'quoted' | 'won' | 'lost';
+/** How an inquiry arrived. */
+export type InquirySource = 'email' | 'website' | 'whatsapp' | 'referral' | 'trade_fair' | 'phone' | 'other';
+export type InquiryUnit = 'MT' | 'KG' | 'QTL';
+
+/** One product the buyer asked for. */
+export interface InquiryLine {
+  product_id: string | null;
+  product_name: string;
+  grade: string | null;
+  /** Requested purity, free text such as '99%'. */
+  purity: string | null;
+  /** Decimal string, above zero. */
+  quantity: string;
+  unit: InquiryUnit;
+  packaging: string | null;
+  specifications: string | null;
+}
+
+/** An inquiry as GET /inquiries returns it (api/src/views/inquiry.view.ts). */
+export interface Inquiry {
+  id: string;
+  /** Readable sequential id, e.g. 'INQ-0001'; given by the API. */
+  inquiry_code: string;
+  buyer_id: string;
+  buyer_name: string;
+  /** 'YYYY-MM-DD' */
+  inquiry_date: string;
+  products: InquiryLine[];
+  destination_country: string | null;
+  destination_port: string | null;
+  currency: Currency | null;
+  incoterm: string | null;
+  source: InquirySource | null;
+  /** The buyer's own words. */
+  original_message: string | null;
+  status: InquiryStatus;
+  /** profiles.id of the salesperson responsible. */
+  assigned_to: string | null;
+  /** 'YYYY-MM-DD' */
+  next_followup: string | null;
+  notes: string | null;
+  archived: boolean;
+  quote_count: number;
+}
+
+/** GET /inquiries/:id: the inquiry plus the quotations made from it. */
+export interface InquiryDetail extends Inquiry { quotes: QuoteListRow[]; assigned_name: string | null }
+
+/** Body of POST /inquiries and PATCH /inquiries/:id (PATCH sends only what changed). */
+export type InquiryInput = Partial<Omit<Inquiry, 'id' | 'inquiry_code' | 'buyer_name' | 'quote_count'>> & { buyer_id: string; products: InquiryLine[] };

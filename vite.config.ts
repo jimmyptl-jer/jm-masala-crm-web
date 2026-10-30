@@ -29,8 +29,8 @@ export default defineConfig({
   // tsconfig.json has the matching `paths` entry so TypeScript understands it too. import.meta.dirname is
   // this folder (needs Node 20.11+).
   resolve: { alias: { '@': path.resolve(import.meta.dirname, 'src') } },
-  // Dev server only (npm run dev). Port 5173 is the address the API's CORS_ORIGINS and the README expect.
+  // Dev server only (npm run dev). Port 5173 is the address the API's CORS_ORIGINS, the Supabase redirect URLs and the README expect; strictPort makes it fail loudly instead of starting on another port that CORS would then block.
   // host: true listens on all network interfaces, so the app can be opened from a phone on the same Wi-Fi.
   // There is no proxy: the browser calls the API directly at VITE_API_URL.
-  server: { port: 5173, host: true },
+  server: { port: 5173, strictPort: true, host: true },
 });
