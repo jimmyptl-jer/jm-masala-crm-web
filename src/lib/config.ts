@@ -34,6 +34,7 @@ const LIVE_ROUTES: [string, RegExp][] = [
   ['GET', /^\/setup\/status$/],
   ['POST', /^\/setup\/claim-admin$/],
   ['*', /^\/inquiries(\/[0-9a-f]{24})?(\?|$)/],
+  ['*', /^\/samples(\/[0-9a-f]{24})?(\?|$)/],
   ['*', /^\/partners(\/[0-9a-f]{24}(\/activities)?)?(\?|$)/],
   ['*', /^\/products(\/[0-9a-f]{24})?(\?|$)/],
   ['GET', /^\/products\/[0-9a-f]{24}\/rate-history$/],

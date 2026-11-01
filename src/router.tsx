@@ -35,6 +35,9 @@ const Partners = lazy(() => import('@/pages/Partners'));
 const Inquiries = lazy(() => import('@/pages/Inquiries'));
 const InquiryDetail = lazy(() => import('@/pages/InquiryDetail'));
 const InquiryEdit = lazy(() => import('@/pages/InquiryEdit'));
+const Samples = lazy(() => import('@/pages/Samples'));
+const SampleDetail = lazy(() => import('@/pages/SampleDetail'));
+const SampleEdit = lazy(() => import('@/pages/SampleEdit'));
 const Followups = lazy(() => import('@/pages/Followups'));
 const Orders = lazy(() => import('@/pages/Orders'));
 const Today = lazy(() => import('@/pages/Today'));
@@ -52,7 +55,7 @@ const Root = () => (<><RecoveryRedirect /><Outlet /></>);
  * - RequireAuth: everything below needs a signed-in user with a profile (see auth/AuthProvider.tsx; in
  *   AUTH_BYPASS mode the sign-in check is skipped).
  * - Layout: sidebar (desktop) / tab bar (phone) around the screen.
- * - Private screens: / (Today), /pipeline, /buyers, /buyers/:id, /inquiries (+ new, :id, :id/edit), /quotes (+ new, template, :id,
+ * - Private screens: / (Today), /pipeline, /buyers, /buyers/:id, /inquiries (+ new, :id, :id/edit), /samples (+ new, :id, :id/edit), /quotes (+ new, template, :id,
  *   :id/edit), /follow-ups, /products (+ new, :name, :name/edit), /daily-rates, /partners (+ :id), /orders and /settings (admin only).
  *   /quotations redirects to /quotes; any unknown URL redirects to / (replace, so Back does not loop).
  * - Marketing and Trade intelligence are not part of the app (removed); there is no /marketing route.
@@ -85,6 +88,10 @@ export const router = createBrowserRouter([
               { path: '/inquiries/new', element: <InquiryEdit /> },
               { path: '/inquiries/:id/edit', element: <InquiryEdit /> },
               { path: '/inquiries/:id', element: <InquiryDetail /> },
+              { path: '/samples', element: <Samples /> },
+              { path: '/samples/new', element: <SampleEdit /> },
+              { path: '/samples/:id/edit', element: <SampleEdit /> },
+              { path: '/samples/:id', element: <SampleDetail /> },
               { path: '/buyers/:id', element: <BuyerDetail /> },
               { path: '/follow-ups', element: <Followups /> },
               { path: '/products', element: <Products /> },

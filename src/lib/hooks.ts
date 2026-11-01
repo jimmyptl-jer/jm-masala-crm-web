@@ -13,6 +13,7 @@ import { useBlocker } from 'react-router-dom';
 import { api, qs } from './api';
 import { hasRoute } from './config';
 import type { Partner, PartnerDetail } from './partners';
+import type { Sample } from './samples';
 import type { Buyer, BuyerSummary, FxRate, Inquiry, Product, SendChannels, Settings, TeamMember } from './types';
 
 /**
@@ -80,6 +81,13 @@ export const useInquiries = (opts: { q?: string; status?: string; buyer_id?: str
   useQuery({
     queryKey: ['inquiries', opts],
     queryFn: () => api.get<{ data: Inquiry[] }>(`/inquiries${qs(opts)}`).then((r) => r.data),
+  });
+
+/** GET /samples (react-query key ['samples', opts]); every sample change invalidates ['samples']. */
+export const useSamples = (opts: { q?: string; status?: string; result?: string; buyer_id?: string; product?: string; assigned_to?: string; archived?: 'true' | 'false' | 'all' } = {}) =>
+  useQuery({
+    queryKey: ['samples', opts],
+    queryFn: () => api.get<{ data: Sample[] }>(`/samples${qs(opts)}`).then((r) => r.data),
   });
 
 export const useBuyers = (opts: { q?: string; type?: string; archived?: 'true' | 'false' | 'all'; stage?: string; channel?: string; qualified?: 'true' | 'false'; due?: '1' } = {}) =>

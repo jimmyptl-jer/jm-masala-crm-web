@@ -14,6 +14,7 @@ import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { BuyerForm } from '@/components/BuyerForm';
 import { BuyerPipelineCard } from '@/components/buyers/BuyerPipelineCard';
+import { BuyerSamples } from '@/components/buyers/BuyerSamples';
 import { StagePill } from '@/components/buyers/StagePill';
 import { Button, Card, EmptyState, ErrorNote, Sheet, Spinner, StatusBadge, useToast } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
@@ -241,6 +242,8 @@ export default function BuyerDetail() {
         <h2 className="px-4 pt-4 text-[17px] font-bold leading-6 text-ink">{s.quotesTitle}</h2>
         {quotes.length === 0 ? <EmptyState title={s.noQuotes} /> : <ul className="mt-2 divide-y divide-cream-200 pb-2">{quotes.map((q) => <QuoteRow key={q.id} q={q} />)}</ul>}
       </Card>
+
+      <BuyerSamples buyerId={b.id} />
 
       <Card className="p-4">
         <h2 className="mb-3 text-[17px] font-bold leading-6 text-ink">{s.activityTitle}</h2>

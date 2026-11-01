@@ -20,7 +20,7 @@ This defines the sales-first interface for the current web app. It prioritizes b
 - **Sidebar (md and up):** white, right border; paprika "JM" square and the "JM Masala" wordmark (Cormorant 700, 20px); collapse button; a Search button (Ctrl/Cmd + K opens a palette for pages, buyers and quotations, `CommandPalette.tsx`); items 36px tall with a 16px icon, hover `surface-hover`, active paprika-50 background, paprika-700 bold text and a 3px paprika bar. Groups: Dashboard, Pipeline, Buyers; **Sales** (Quotations with a grey badge of draft quotes, Follow-ups with a red badge of follow-ups due); **Operations** (Products, Orders). Settings (admin only) and the signed-in person with role at the bottom. 240px expanded, 64px icon rail; it collapses automatically under 1280px or with the button, and the choice is kept in `localStorage` ('jm.nav'). In the rail the red badge becomes a dot and labels become tooltips.
 - **Top bar (56px):** breadcrumb (Home / section / New, Edit or Details), the bell (paprika dot when follow-ups are due) and a paprika "+ New" menu (New quotation, Add buyer).
 - **Phone:** header with the logo, search and sign-out; bottom bar Home, Pipeline, a round paprika "+" (Create sheet: New quotation, Add buyer), Quotations, More (the full menu).
-- **Not in the app yet, so not in the menu:** Proforma invoices, Samples, Shipments, Payments (the design's Payments tab becomes Quotations on the phone bar), and the "Log payment" create option. The Settings role label is Owner or Sales (the app has admin and sales roles, not Partner). The group labels use `ink-muted` (not `ink-placeholder`) so they stay readable.
+- **Not in the app yet, so not in the menu:** Proforma invoices, Shipments, Payments (the design's Payments tab becomes Quotations on the phone bar), and the "Log payment" create option. The Settings role label is Owner or Sales (the app has admin and sales roles, not Partner). The group labels use `ink-muted` (not `ink-placeholder`) so they stay readable.
 
 Original target (kept for reference): desktop sidebar in this order:
 
@@ -80,7 +80,7 @@ Settings sits at the bottom for administrators. On mobile, keep Dashboard, Pipel
 - Activity: chronological calls, emails, notes, quote events and follow-up outcomes; add an activity without leaving the profile.
 - Quotations: all quote references, revisions, amounts/currencies, validity, status and outcome; open, duplicate or revise from the relevant quote.
 - Requirements: grades/specifications, quantity, target price, destination port, currency, Incoterm and payment terms.
-- Samples: request, dispatch date, courier/tracking and buyer feedback.
+- Samples: request, dispatch date, courier/tracking and buyer feedback. Built as a "Samples" card on the buyer page (status and result pills, links to each sample, "New sample" for this buyer) rather than a tab; the full screens are **Samples** (`/samples`: metric tiles, filters, sortable list; `/samples/new`, `/samples/:id`, `/samples/:id/edit`). The cost column and field are shown to administrators only.
 - Orders: confirmed business and current order status; link to order detail.
 
 ### 5. Quotations — `/quotes`

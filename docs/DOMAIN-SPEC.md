@@ -99,7 +99,7 @@ and grades (one row per grade), follow-ups, orders placeholder, settings.
 | `products` -> `product_grades` | Flat rows, one per grade; grouped by name in the UI. No `hsn_code` at product level, no `is_pesticide_free`. |
 | `deals` (stage, expected value/qty) | Not built; the pipeline stage lives on the buyer. |
 | `buyer_contacts`, KYC status, `buyer_documents` | One primary contact on the buyer; no KYC status or documents. |
-| `samples`, `costings`, `suppliers`, lots | Not built (sample stages exist only as pipeline stages). |
+| `samples` | Built, simplified: one record per sample with `buyer_id`, `product_name` (+ `grade`), `weight_g`, `requested_at`, `sent_at`, `courier`, `tracking_no`, `status`, `result`, `feedback`, admin-only `cost_inr`, owner and notes. No `deal_id` (there are no deals); no automatic move of the buyer's pipeline stage. |
 | PIs, orders, payment schedules, shipments, shipment documents | Not built (Orders is a placeholder). |
 | Compliance reminders | Not built. |
 | Roles partner / export_manager / accountant | App has admin and sales only. |

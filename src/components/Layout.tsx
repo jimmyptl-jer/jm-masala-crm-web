@@ -10,7 +10,7 @@
  *  - Phone: header with the logo and sign-out, and a bottom bar: Home, Pipeline, a round paprika "+" (opens a Create sheet),
  *    Quotations, More (the full menu).
  * API: GET /buyers/summary (follow-ups due, key ['buyers','summary']) and GET /quotes?status=draft&limit=1 (draft count, key
- * ['quotes','nav-drafts']) for the badges. Proforma invoices, samples, shipments and payments from the design are not in
+ * ['quotes','nav-drafts']) for the badges. Proforma invoices, shipments and payments from the design are not in
  * the app yet, so they are not in the menu. Sign out is hidden in AUTH_BYPASS mode (lib/config.ts); Settings is admin-only (FR-04).
  */
 import clsx from 'clsx';
@@ -35,7 +35,7 @@ interface Item { to: string; label: string; icon: ElementType; end?: boolean; co
 
 /** Breadcrumb label of the first path segment. */
 const SECTION: Record<string, string> = {
-  '': n.today, pipeline: n.pipeline, buyers: n.buyers, inquiries: n.inquiries, quotes: n.quotes, quotations: n.quotes, 'follow-ups': n.followups,
+  '': n.today, pipeline: n.pipeline, buyers: n.buyers, inquiries: n.inquiries, samples: n.samples, quotes: n.quotes, quotations: n.quotes, 'follow-ups': n.followups,
   products: n.products, 'daily-rates': n.dailyRates, partners: n.partners, orders: n.orders, settings: n.settings,
 };
 
@@ -83,7 +83,7 @@ export function Layout() {
       { to: '/inquiries', label: n.inquiries, icon: Inbox },
       { to: '/quotes', label: n.quotes, icon: FileText, count: drafts || undefined },
       { to: '/proforma', label: n.proforma, icon: FileSpreadsheet, soon: true },
-      { to: '/samples', label: n.samples, icon: FlaskConical, soon: true },
+      { to: '/samples', label: n.samples, icon: FlaskConical },
       { to: '/follow-ups', label: n.followups, icon: Workflow, count: due || undefined, alert: true },
     ] },
     { label: n.groupOperations, items: [

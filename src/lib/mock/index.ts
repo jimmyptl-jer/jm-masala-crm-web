@@ -11,6 +11,8 @@ import type {
   Buyer, BuyerDetail, BuyerSummary, CalcResult, Currency, Dashboard, FxRate, Inquiry, InquiryDetail, Product, QuoteDetail, QuoteListRow, Stage,
 } from '../types';
 import { PARTNERS } from './partners';
+import { SAMPLES } from './samples';
+import type { Sample } from '../samples';
 import { BUYERS, INQUIRIES, ME, PRODUCTS, QUOTES, SETTINGS, TEAM, USERS } from './data';
 
 /** Today's dollar rate in the sample data; nobody has set it until the first PUT /fx-rate. */
@@ -186,6 +188,36 @@ export async function mockRequest<T>(method: string, fullPath: string, body?: un
       const a = { id: newId('pa'), user_id: ME.id, user_name: ME.full_name, happened_at: new Date().toISOString(), ...(b as object) } as PartnerDetailActivity;
       x.activities.unshift(a); x.activity_count = x.activities.length; x.last_interaction = a.happened_at;
       return out(a);
+    }
+  }
+
+  // ---- samples (sample data; the sample data user is an administrator, so the cost is always there) ----
+  if (seg[0] === 'samples') {
+    const find = () => { const x = SAMPLES.find((y) => y.id === seg[1]); if (!x) throw notFound(); return x; };
+    const detail = (x: Sample) => ({ ...x, assigned_name: x.assigned_to ? 'Demo User' : null });
+    if (method === 'GET' && seg.length === 1) {
+      const q = (params.get('q') ?? '').toLowerCase();
+      const archived = params.get('archived') ?? 'false';
+      const rows = SAMPLES.filter((x) =>
+        (archived === 'all' || x.archived === (archived === 'true')) && (!params.get('status') || x.status === params.get('status')) && (!params.get('result') || x.result === params.get('result')) &&
+        (!params.get('buyer_id') || x.buyer_id === params.get('buyer_id')) && (!params.get('product') || x.product_name === params.get('product')) && (!params.get('assigned_to') || x.assigned_to === params.get('assigned_to')) &&
+        (!q || [x.sample_code, x.buyer_name, x.product_name, x.courier, x.tracking_no].some((f) => f?.toLowerCase().includes(q))));
+      return out({ data: [...rows].sort((a, b) => b.requested_at.localeCompare(a.requested_at)) });
+    }
+    if (method === 'GET' && seg.length === 2) return out(detail(find()));
+    if (method === 'POST' && seg.length === 1) {
+      const input = b as Partial<Sample>;
+      const created = { product_id: null, grade: null, sent_at: null, courier: null, tracking_no: null, status: 'requested', result: 'pending', feedback: null, cost_inr: null, assigned_to: null, notes: null, requested_at: today(),
+        ...input, id: newId('s'), sample_code: `SMP-${String(SAMPLES.length + 1).padStart(4, '0')}`, buyer_name: BUYERS.find((x) => x.id === input.buyer_id)?.company_name ?? '', archived: false } as Sample;
+      if (created.status === 'dispatched' && !created.sent_at) created.sent_at = today();
+      SAMPLES.unshift(created);
+      return out(created);
+    }
+    if ((method === 'PATCH' || method === 'DELETE') && seg.length === 2) {
+      const x = find();
+      Object.assign(x, method === 'DELETE' ? { archived: true } : b);
+      if (x.status === 'dispatched' && !x.sent_at) x.sent_at = today();
+      return out(detail(x));
     }
   }
 
