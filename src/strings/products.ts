@@ -147,7 +147,7 @@ export const products = {
   deleteGradeConfirm: (name: string) => `Delete ${name}? If no quotation has used it, it is removed for good. If one has, it is archived instead.`,
   gradeDeleted: 'Grade deleted',
   gradeArchivedInstead: 'This grade is used on quotations, so it was archived instead.',
-  tabProducts: 'Products', tabDaily: 'Daily rates', tabsLabel: 'Products sections',
+  tabProducts: 'Products', tabDaily: 'Daily rates', tabCalculator: 'Price calculator', tabsLabel: 'Products sections',
   dailyPageSub: 'Today\'s price per kg, product by product with its grades below.',
   dailyTitle: 'Daily rates', dailySub: 'The price per kg of every grade today. Change a rate here or in the product form; both keep the same record.',
   dailySearch: 'Search a product or grade…', dailyNone: 'No products to price yet.', dailyNoMatch: 'No grade matches your search.',

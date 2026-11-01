@@ -5,8 +5,9 @@
  * API: GET /products via useProducts (react-query key ['products', { q, archived }]). Everyone signed in can
  * read the list; only admins see Add and Edit (the API also enforces this with a 403). Products are archived,
  * never deleted (BR-12). Counts and the "last updated" date are worked out from the loaded rows (no money is
- * added up). Mounted by router.tsx. Two tabs: Products (this list) and Daily rates (components/products/DailyRates.tsx, the per-kg
- * rate of every grade; `/products?tab=daily-rates` opens it directly).
+ * added up). Mounted by router.tsx. Three tabs: Products (this list), Daily rates (components/products/DailyRates.tsx, the per-kg
+ * rate of every grade; `/products?tab=daily-rates` opens it directly) and, for administrators only, Price calculator
+ * (components/products/PriceCalculator.tsx, the export price sheet; `/products?tab=calculator`).
  * Local state: q (search), status (active / all) and view (grid / table).
  */
 import clsx from 'clsx';
@@ -15,6 +16,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
 import { DailyRates } from '@/components/products/DailyRates';
+import { PriceCalculator } from '@/components/products/PriceCalculator';
 import { Stat, Thumb, group } from '@/components/products/shared';
 import { Button, EmptyState, ErrorNote, PageHeader, Spinner } from '@/components/ui';
 import { date, money, qty } from '@/lib/format';
@@ -29,8 +31,12 @@ export default function Products() {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const tab = params.get('tab') === 'daily-rates' ? 'daily-rates' : 'products';
-  const setTab = (next: 'products' | 'daily-rates') => setParams(next === 'products' ? {} : { tab: next }, { replace: true });
+  type Tab = 'products' | 'daily-rates' | 'calculator';
+  const wanted = params.get('tab');
+  // the price calculator shows cost and margin, so it is for administrators only (the API refuses everyone else)
+  const tab: Tab = wanted === 'daily-rates' ? 'daily-rates' : wanted === 'calculator' && isAdmin ? 'calculator' : 'products';
+  const setTab = (next: Tab) => setParams(next === 'products' ? {} : { tab: next }, { replace: true });
+  const tabs: (readonly [Tab, string])[] = [['products', s.tabProducts], ['daily-rates', s.tabDaily], ...(isAdmin ? [['calculator', s.tabCalculator] as const] : [])];
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<'active' | 'all'>('active');
   const [view, setView] = useState<'grid' | 'table'>('grid');
@@ -62,13 +68,14 @@ export default function Products() {
       </section>
 
       <div role="tablist" aria-label={s.tabsLabel} className="flex gap-1 border-b border-line">
-        {([['products', s.tabProducts], ['daily-rates', s.tabDaily]] as const).map(([key, label]) => (
+        {tabs.map(([key, label]) => (
           <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}
             className={clsx('tap -mb-px whitespace-nowrap border-b-2 px-4 text-sm font-semibold', tab === key ? 'border-paprika text-paprika' : 'border-transparent text-ink-secondary hover:text-ink')}>{label}</button>
         ))}
       </div>
 
       {tab === 'daily-rates' && <DailyRates />}
+      {tab === 'calculator' && <PriceCalculator />}
 
       <div className={tab === 'products' ? undefined : 'hidden'}>
         <section className="glass-panel min-w-0 p-4" aria-label={s.title}>

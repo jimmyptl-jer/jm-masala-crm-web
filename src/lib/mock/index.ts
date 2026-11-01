@@ -11,6 +11,8 @@ import type {
   Buyer, BuyerDetail, BuyerSummary, CalcResult, Currency, Dashboard, FxRate, Inquiry, InquiryDetail, Product, QuoteDetail, QuoteListRow, Stage,
 } from '../types';
 import { PARTNERS } from './partners';
+import { CALC_DEFAULTS, CALC_ROWS, PRICE_SHEETS } from './priceCalculator';
+import type { CalcLineInput, CalcLineOut, PriceSheet } from '../priceCalculator';
 import { SAMPLES } from './samples';
 import type { Sample } from '../samples';
 import { BUYERS, INQUIRIES, ME, PRODUCTS, QUOTES, SETTINGS, TEAM, USERS } from './data';
@@ -165,6 +167,35 @@ export async function mockRequest<T>(method: string, fullPath: string, body?: un
       if (!p) throw notFound();
       Object.assign(p, b, { updated_at: new Date().toISOString() });
       return out(p);
+    }
+  }
+
+  // ---- price calculator (sample data: the API's own answers for the sheet's starting columns; the mock does no money maths) ----
+  if (seg[0] === 'price-calculator') {
+    type MockLine = CalcLineInput;
+    const answer = (lines: MockLine[]): CalcLineOut[] => {
+      const rows = lines.map((l) => (l.expenses_override ? undefined : CALC_ROWS.find((r) => r.export_point === l.export_point && Number(r.spot_rate) === Number(l.spot_rate) && Number(r.fx_rate) === Number(l.fx_rate))));
+      if (rows.some((r) => !r)) throw new ApiError(501, 'needs_api', 'Sample data only has the sheet\'s starting figures. Changing a figure needs the real API.');
+      return rows as CalcLineOut[];
+    };
+    if (method === 'GET' && seg[1] === 'defaults') return out(CALC_DEFAULTS);
+    if (method === 'POST' && seg.length === 1) return out({ lines: answer((b as { lines?: MockLine[] }).lines ?? []) });
+    if (seg[1] === 'sheets') {
+      const find = () => { const x = PRICE_SHEETS.find((y) => y.id === seg[2]); if (!x) throw notFound(); return x; };
+      const build = (id: string): PriceSheet => {
+        const body = b as { sheet_date: string; name: string | null; assumptions?: object; export_points?: object; lines: MockLine[] };
+        return { id, sheet_date: body.sheet_date, name: body.name ?? null, assumptions: { ...CALC_DEFAULTS.assumptions, ...body.assumptions }, export_points: { ...CALC_DEFAULTS.export_points, ...body.export_points },
+          lines: body.lines, results: answer(body.lines), saved_by_name: ME.full_name, archived: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+      };
+      if (method === 'GET' && seg.length === 2) {
+        const all = params.get('archived') === 'true';
+        return out({ data: PRICE_SHEETS.filter((x) => all || !x.archived).sort((a, c) => c.sheet_date.localeCompare(a.sheet_date)).map((x) => ({ id: x.id, sheet_date: x.sheet_date, name: x.name, line_count: x.lines.length, saved_by_name: x.saved_by_name, archived: x.archived, updated_at: x.updated_at })) });
+      }
+      if (method === 'GET' && seg.length === 3) return out(find());
+      if (method === 'POST' && seg.length === 2) { const made = build(newId('ps')); PRICE_SHEETS.push(made); return out(made); }
+      if (method === 'PUT' && seg.length === 3) { const old = find(); Object.assign(old, build(old.id), { created_at: old.created_at, archived: old.archived }); return out(old); }
+      if (method === 'DELETE' && seg.length === 3) { const old = find(); old.archived = true; return out(old); }
+      if (method === 'PATCH' && seg.length === 3) { const old = find(); old.archived = (b as { archived?: boolean }).archived === true; return out(old); }
     }
   }
 
