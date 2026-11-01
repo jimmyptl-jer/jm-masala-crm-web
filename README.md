@@ -1,13 +1,13 @@
-# web/ — the app people use
+# jm-masala-crm-web — the app people use
 
 React 19 + TypeScript + Tailwind + react-router + @tanstack/react-query, built with Vite. Designed for a
 phone first (big tap targets, bottom tab bar, dropdowns instead of typing) and works on desktop (sidebar).
 
-Back to the [project README](../README.md) · What each API route does: [api/README.md](../api/README.md#route-reference)
+The API lives in its own repo, [jm-masala-crm-api](https://github.com/jimmyptl-jer/jm-masala-crm-api) · What each API route does: [its README](https://github.com/jimmyptl-jer/jm-masala-crm-api#route-reference)
 
 **The golden rule of this folder:** the web app **never does money arithmetic**. Every amount arrives from the
 API as text and is only formatted for display (`src/lib/format.ts`). To change a calculation, change
-`api/src/services/calc.ts`.
+`src/services/calc.ts` in the API repo.
 
 ## Screen map
 
