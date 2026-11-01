@@ -13,7 +13,7 @@ import type { Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError, api } from '@/lib/api';
-import { AUTH_BYPASS } from '@/lib/config';
+import { AUTH_BYPASS, CREATE_ADMIN_PATH } from '@/lib/config';
 import { supabase } from '@/lib/supabase';
 import type { Me } from '@/lib/types';
 import { Spinner } from '@/components/ui';
@@ -57,10 +57,10 @@ interface AuthState {
   refreshMe: () => Promise<void>;
 }
 
-// React context holding the AuthState; null outside AuthProvider (useAuth turns that into an error).
 /** The person every request is treated as while login is off (the API answers GET /me with the same). */
 const BYPASS_ME: Me = { id: '00000000-0000-4000-8000-000000000001', email: null, role: 'admin', full_name: 'Admin' };
 
+/** React context holding the AuthState; null outside AuthProvider (useAuth turns that into an error). */
 const Ctx = createContext<AuthState | null>(null);
 /**
  * Read the auth state (session, me, loading, isAdmin, profileError, signOut, refreshMe) from any component
@@ -115,7 +115,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (e instanceof ApiError && e.code === 'account_inactive') { setProfileError(t.login.pending); return; }
       // 403 forbidden: signed in with Supabase but not known to the CRM yet (just signed up): ask for access once, which records the
       // person as pending, then look again
-      if (e instanceof ApiError && e.status === 403 && retry) {
+      // (not while the create-admin screen is open: it signs the person in and then claims the admin account itself, and a pending
+      // request made here first would race with that)
+      if (e instanceof ApiError && e.status === 403 && retry && window.location.pathname !== CREATE_ADMIN_PATH) {
         try { await api.post('/signup/request', {}); return loadMe(false); } catch { /* fall through to the message below */ }
       }
       if (e instanceof ApiError && e.status === 403) setProfileError(t.login.noProfile);
@@ -157,7 +159,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthState>(() => ({
     session, me, loading, profileError, isAdmin: me?.role === 'admin',
     signedIn: !!session,
-    signOut: async () => { await supabase.auth.signOut(); },
+    // a failed sign-out (for example no network) must not become an unhandled rejection; the session stays and the person can retry
+    signOut: async () => { try { await supabase.auth.signOut(); } catch { /* still signed in; the button can be pressed again */ } },
     refreshMe: loadMe,
   }), [session, me, loading, profileError, loadMe]);
 

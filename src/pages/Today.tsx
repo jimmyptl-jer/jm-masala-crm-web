@@ -25,6 +25,7 @@ import { Button, EmptyState, ErrorNote, Input, Select, Sheet, Spinner, Textarea,
 import { api } from '@/lib/api';
 import { buildChase, goingCold, type ChaseKind, type ChaseRow, type ChaseTone } from '@/lib/chase';
 import { addDays, money, todayIST, waLink } from '@/lib/format';
+import { hasRoute, PROBE_ID } from '@/lib/config';
 import { useBuyers, useProducts } from '@/lib/hooks';
 import type { ActivityKind, Buyer, Dashboard, QuoteList } from '@/lib/types';
 import { t } from '@/strings';
@@ -155,7 +156,10 @@ export default function Today() {
   const { done, add } = useDoneToday(today);
 
   const buyersQ = useBuyers({ archived: 'false' });
-  const dash = useQuery({ queryKey: ['dashboard'], queryFn: () => api.get<Dashboard>('/dashboard') });
+  // routes that may not be live yet (config.ts hasRoute): without them the quote follow-ups and "log contact" are left out
+  const dashOn = hasRoute('GET', '/dashboard');
+  const logOn = hasRoute('POST', `/buyers/${PROBE_ID}/activities`);
+  const dash = useQuery({ queryKey: ['dashboard'], queryFn: () => api.get<Dashboard>('/dashboard'), enabled: dashOn });
   const quotesQ = useQuery({ queryKey: ['quotes', 'dashboard'], queryFn: () => api.get<QuoteList>('/quotes?limit=100') });
   const products = useProducts({ archived: 'false' });
 
@@ -184,7 +188,7 @@ export default function Today() {
   }, [mine, products.data]);
   const maxDemand = Math.max(1, ...demand.map((d) => d.n));
 
-  const loading = buyersQ.isPending || dash.isPending;
+  const loading = buyersQ.isPending || (dashOn && dash.isPending);
   const name = me?.full_name || c.greetingFallbackName;
 
   return (
@@ -202,10 +206,12 @@ export default function Today() {
                 className={clsx('tap rounded-md px-4 text-sm font-bold', scope === s ? 'bg-ink text-white' : 'text-ink-secondary hover:bg-surface-hover')}>{s === 'me' ? c.scopeMe : c.scopeTeam}</button>
             ))}
           </div>
-          <Button onClick={() => setSheet({ mode: 'log' })}>{c.logContact}</Button>
+          {logOn && <Button onClick={() => setSheet({ mode: 'log' })}>{c.logContact}</Button>}
         </div>
       </div>
 
+      {!dashOn && <p role="status" className="rounded-lg border border-line bg-surface-muted px-4 py-3 text-sm text-ink-muted">{c.dashboardUnavailable}</p>}
+      {quotesQ.data && quotesQ.data.total > quotes.length && <p role="status" className="rounded-lg border border-line bg-surface-muted px-4 py-3 text-sm text-ink-muted">{t.common.listTruncated(quotes.length, quotesQ.data.total)}</p>}
       {buyersQ.isError && <ErrorNote error={buyersQ.error} onRetry={() => void buyersQ.refetch()} />}
       {loading && !buyersQ.isError && <Spinner />}
 
@@ -240,13 +246,13 @@ export default function Today() {
                       ))}
                     </div>
                   </div>
-                  <ChaseTable rows={shown} onDone={(b) => setSheet({ mode: 'done', buyer: b })} onQuote={(b) => navigate(`/quotes/new?buyer=${b.id}`)} />
+                  <ChaseTable rows={shown} onDone={logOn ? (b) => setSheet({ mode: 'done', buyer: b }) : undefined} onQuote={(b) => navigate(`/quotes/new?buyer=${b.id}`)} />
                 </>
               )}
               {tab === 'overdue' && (
                 <>
                   <div className="px-5 py-4"><h2 className="text-[17px] font-bold leading-6 text-ink">{c.overdueTitle}</h2><p className="text-sm text-ink-muted">{c.overdueHint}</p></div>
-                  <ChaseTable rows={overdueRows} onDone={(b) => setSheet({ mode: 'done', buyer: b })} onQuote={(b) => navigate(`/quotes/new?buyer=${b.id}`)} />
+                  <ChaseTable rows={overdueRows} onDone={logOn ? (b) => setSheet({ mode: 'done', buyer: b }) : undefined} onQuote={(b) => navigate(`/quotes/new?buyer=${b.id}`)} />
                 </>
               )}
               {tab === 'new' && (
@@ -326,7 +332,7 @@ export default function Today() {
 }
 
 /** One row of the chase list: buyer, what they want, last contact, the reason badge and the actions. */
-function ChaseLine({ row, onDone, onQuote }: { row: ChaseRow; onDone: () => void; onQuote: () => void }) {
+function ChaseLine({ row, onDone, onQuote }: { row: ChaseRow; onDone?: () => void; onQuote: () => void }) {
   const b = row.buyer;
   const wants = wantsOf(b);
   const since = row.daysSinceContact;
@@ -346,7 +352,7 @@ function ChaseLine({ row, onDone, onQuote }: { row: ChaseRow; onDone: () => void
             <>
               <IconAction href={wa ? waLink(wa, c.waMessage(b.contact_name ?? b.company_name, wants[0] ?? null)) : undefined} disabled={!wa} label={c.whatsappAria(b.company_name)} tint newTab><MessageCircle className="h-4 w-4" aria-hidden /></IconAction>
               <IconAction href={callNo ? `tel:${callNo}` : undefined} disabled={!callNo} label={c.callAria(b.company_name)}><Phone className="h-4 w-4" aria-hidden /></IconAction>
-              <IconAction label={c.doneAria(b.company_name)} onClick={onDone}><Check className="h-4 w-4" aria-hidden /></IconAction>
+              {onDone && <IconAction label={c.doneAria(b.company_name)} onClick={onDone}><Check className="h-4 w-4" aria-hidden /></IconAction>}
             </>
           )}
         </div>
@@ -356,7 +362,7 @@ function ChaseLine({ row, onDone, onQuote }: { row: ChaseRow; onDone: () => void
 }
 
 /** The chase table (also used by the Overdue tab): one ChaseLine per row, or the empty message. */
-function ChaseTable({ rows, onDone, onQuote }: { rows: ChaseRow[]; onDone: (b: Buyer) => void; onQuote: (b: Buyer) => void }) {
+function ChaseTable({ rows, onDone, onQuote }: { rows: ChaseRow[]; onDone?: (b: Buyer) => void; onQuote: (b: Buyer) => void }) {
   if (rows.length === 0) return <div className="border-t border-line px-5 py-8"><EmptyState title={c.chaseEmpty}>{c.chaseEmptyHint}</EmptyState></div>;
   return (
     <div className="overflow-x-auto">
@@ -367,7 +373,7 @@ function ChaseTable({ rows, onDone, onQuote }: { rows: ChaseRow[]; onDone: (b: B
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
-          {rows.map((r) => <ChaseLine key={r.buyer.id} row={r} onDone={() => onDone(r.buyer)} onQuote={() => onQuote(r.buyer)} />)}
+          {rows.map((r) => <ChaseLine key={r.buyer.id} row={r} onDone={onDone ? () => onDone(r.buyer) : undefined} onQuote={() => onQuote(r.buyer)} />)}
         </tbody>
       </table>
     </div>

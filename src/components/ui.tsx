@@ -11,7 +11,7 @@
 
 import clsx from 'clsx';
 import { AlertTriangle, Loader2, X } from 'lucide-react';
-import { createContext, useCallback, useContext, useEffect, useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { t } from '@/strings';
 import type { QuoteStatus } from '@/lib/types';
 import { ApiError } from '@/lib/api';
@@ -274,6 +274,41 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
   );
 }
 
+/** Elements a keyboard user can tab to. */
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Focus handling for a modal dialog (Sheet, the buyer drawer): while `active`, focus moves into the panel (the panel itself, which needs
+ * tabIndex={-1}), Tab and Shift+Tab stay inside it, and when it closes focus returns to the element that opened it.
+ * @param panelRef — ref of the dialog panel. @param active — true while the dialog is open.
+ */
+export function useDialogFocus(panelRef: React.RefObject<HTMLElement | null>, active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (!panel.contains(document.activeElement)) panel.focus({ preventScroll: true });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const here = document.activeElement;
+      // another dialog opened on top of this one owns the keyboard
+      if (here && !panel.contains(here) && here !== document.body) return;
+      const items = [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((el) => el.offsetParent !== null || el === here);
+      if (items.length === 0) { e.preventDefault(); panel.focus(); return; }
+      const first = items[0]!;
+      const last = items[items.length - 1]!;
+      if (e.shiftKey && (here === first || here === panel || !panel.contains(here))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (here === last || !panel.contains(here))) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      if (opener && opener.isConnected) opener.focus({ preventScroll: true });
+    };
+  }, [active, panelRef]);
+}
+
 /**
  * Modal panel: a bottom sheet on a phone and a centred dialog from md width up. Used for forms (new buyer,
  * edit product, user editor), pickers (SearchSelect) and quote actions.
@@ -286,7 +321,8 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
  *   (buttons).
  * @param props.wide — a wider dialog (about 768 px instead of 512 px) from md width up, for long forms such as
  *   the buyer and product forms; on a phone every sheet is full width anyway.
- * While open the page behind cannot scroll (body overflow is locked and restored on close).
+ * While open the page behind cannot scroll (body overflow is locked and restored on close). Focus moves into the dialog, Tab is trapped
+ * inside it and focus returns to the opener on close (useDialogFocus).
  */
 export function Sheet({ open, onClose, title, children, footer, wide, huge }:
   { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode; wide?: boolean; huge?: boolean }) {
@@ -301,11 +337,13 @@ export function Sheet({ open, onClose, title, children, footer, wide, huge }:
     document.body.style.overflow = 'hidden';
     return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
   }, [open, onClose]);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(panelRef, open);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center" role="dialog" aria-modal="true" aria-label={title}>
       <div className="absolute inset-0 bg-slate-950/35 " onClick={onClose} />
-      <div className={`glass-panel-strong relative flex max-h-[92dvh] w-full flex-col rounded-t-2xl md:rounded-2xl ${huge ? 'md:max-w-6xl' : wide ? 'md:max-w-3xl' : 'md:max-w-lg'}`}>
+      <div ref={panelRef} tabIndex={-1} className={`glass-panel-strong relative focus:outline-none flex max-h-[92dvh] w-full flex-col rounded-t-2xl md:rounded-2xl ${huge ? 'md:max-w-6xl' : wide ? 'md:max-w-3xl' : 'md:max-w-lg'}`}>
         <div className="flex items-center justify-between border-b border-slate-200/80 px-4 py-3">
           <h2 className="font-sans text-xl font-semibold tracking-tight text-crm-ink md:text-2xl">{title}</h2>
           <button type="button" onClick={onClose} aria-label={t.common.close} className="tap -mr-2 rounded-lg text-slate-600 hover:bg-slate-100"><X className="mx-auto h-5 w-5" /></button>

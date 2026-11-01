@@ -11,8 +11,9 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useBlocker } from 'react-router-dom';
 import { api, qs } from './api';
+import { hasRoute } from './config';
 import type { Partner, PartnerDetail } from './partners';
-import type { Buyer, BuyerSummary, CampaignListRow, FxRate, Inquiry, MarketingAsset, MarketingTemplate, Product, SendChannels, Settings, TeamMember } from './types';
+import type { Buyer, BuyerSummary, FxRate, Inquiry, Product, SendChannels, Settings, TeamMember } from './types';
 
 /**
  * Return `value` only after it has stopped changing for `ms` milliseconds. Used so typing in a search box
@@ -126,30 +127,18 @@ export const useSendChannels = () => {
 };
 
 /**
- * GET /team: id and name of everyone who can be given a buyer (key ['team'], cached 5 minutes). Used by the
+ * GET /team (only when the route is live, see lib/config.ts hasRoute; otherwise always []): id and name of everyone who can be given a buyer (key ['team'], cached 5 minutes). Used by the
  * "Assigned to" dropdown of the buyer form. Empty while loading or on error.
  */
 export const useTeam = (): TeamMember[] =>
-  useQuery({ queryKey: ['team'], queryFn: () => api.get<{ data: TeamMember[] }>('/team').then((r) => r.data), staleTime: 5 * 60_000 }).data ?? [];
+  useQuery({ queryKey: ['team'], queryFn: () => api.get<{ data: TeamMember[] }>('/team').then((r) => r.data), staleTime: 5 * 60_000, enabled: hasRoute('GET', '/team') }).data ?? [];
 
 /**
- * GET /buyers/summary: the Buyer CRM numbers (totals, stage counts, sales by channel). React-query key
+ * GET /buyers/summary (only when the route is live; otherwise the query stays idle with no data): the Buyer CRM numbers (totals, stage counts, sales by channel). React-query key
  * ['buyers', 'summary'], so BuyerForm's invalidation of ['buyers'] refreshes it after every buyer change.
  */
 export const useBuyerSummary = () =>
-  useQuery({ queryKey: ['buyers', 'summary'], queryFn: () => api.get<BuyerSummary>('/buyers/summary') });
-
-/** GET /marketing/templates: the saved e-mail templates (key ['marketing', 'templates']). */
-export const useTemplates = () =>
-  useQuery({ queryKey: ['marketing', 'templates'], queryFn: () => api.get<{ data: MarketingTemplate[] }>('/marketing/templates').then((r) => r.data) });
-
-/** GET /marketing/assets: the uploaded marketing files (key ['marketing', 'assets']); their links last one hour. */
-export const useAssets = () =>
-  useQuery({ queryKey: ['marketing', 'assets'], queryFn: () => api.get<{ data: MarketingAsset[] }>('/marketing/assets').then((r) => r.data) });
-
-/** GET /marketing/campaigns: the campaign history, newest first (key ['marketing', 'campaigns']). */
-export const useCampaigns = () =>
-  useQuery({ queryKey: ['marketing', 'campaigns'], queryFn: () => api.get<{ data: CampaignListRow[] }>('/marketing/campaigns').then((r) => r.data) });
+  useQuery({ queryKey: ['buyers', 'summary'], queryFn: () => api.get<BuyerSummary>('/buyers/summary'), enabled: hasRoute('GET', '/buyers/summary') });
 
 /**
  * GET /partners: the partner directory (key ['partners', opts]); every partner change invalidates ['partners'].

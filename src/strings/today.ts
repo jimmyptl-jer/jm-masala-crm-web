@@ -7,6 +7,7 @@ export const today = {
   summary: (chase: number, quotes: number) => `${chase} ${chase === 1 ? 'buyer' : 'buyers'} to chase today · ${quotes} ${quotes === 1 ? 'quote' : 'quotes'} waiting for a reply`,
   scopeLabel: 'Whose buyers', scopeMe: 'Me', scopeTeam: 'Team',
   logContact: '+ Log contact',
+  dashboardUnavailable: 'Quote follow-ups are not available yet, so the lists below cover buyers only.',
 
   // KPI cards
   kpiLabel: 'Sales summary',

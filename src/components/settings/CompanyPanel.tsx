@@ -12,6 +12,7 @@ import { ImagePlus } from 'lucide-react';
 import { useRef, useState, type FormEvent } from 'react';
 import { Button, ErrorNote, Input, Select, Textarea, useToast } from '@/components/ui';
 import { api } from '@/lib/api';
+import { hasRoute } from '@/lib/config';
 import { GSTIN_RE, INDIAN_STATES } from '@/lib/india';
 import type { Settings } from '@/lib/types';
 import { t } from '@/strings';
@@ -119,10 +120,10 @@ export function CompanyPanel({ settings }: { settings: Settings }) {
           <div className="min-w-0 flex-1 space-y-1">
             {!settings.logo_url && <p className="text-sm text-fg-muted">{s.logoNone}</p>}
             <input ref={fileRef} type="file" accept="image/png,image/jpeg" className="sr-only" tabIndex={-1} aria-hidden onChange={(e) => void pickLogo(e.target.files?.[0])} />
-            <Button variant="secondary" loading={logoBusy} onClick={() => fileRef.current?.click()}>{settings.logo_url ? s.logoChange : s.logoChoose}</Button>
+            {hasRoute('POST', '/settings/logo') ? <Button variant="secondary" loading={logoBusy} onClick={() => fileRef.current?.click()}>{settings.logo_url ? s.logoChange : s.logoChoose}</Button> : <p className="text-sm text-fg-muted">{s.logoUnavailable}</p>}
           </div>
         </div>
-        <p className="mt-1 text-xs text-fg-muted">{s.logoHint}</p>
+        {hasRoute('POST', '/settings/logo') && <p className="mt-1 text-xs text-fg-muted">{s.logoHint}</p>}
         {logoError && <p role="alert" className="mt-1 text-sm text-red-700">{logoError}</p>}
         {logoFatal !== null && <div className="mt-2"><ErrorNote error={logoFatal} /></div>}
       </div>

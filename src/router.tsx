@@ -1,39 +1,43 @@
 /**
  * Route table for the whole SPA, built with react-router's createBrowserRouter (see `router` below).
  * Maps URLs to screens in src/pages and wraps them in the auth guards (RequireAuth, RequireAdmin) and
- * Layout
- * from auth/AuthProvider.tsx and components/Layout.tsx. Implements the navigation map of SRS section 8 and
- * the admin-only rule of FR-04. Calls no API itself. In AUTH_BYPASS mode (lib/config.ts) /login simply
- * redirects to / and RequireAuth lets everyone in.
+ * Layout from auth/AuthProvider.tsx and components/Layout.tsx. Implements the navigation map of SRS section 8 and
+ * the admin-only rule of FR-04. Calls no API itself. In AUTH_BYPASS mode (lib/config.ts, sample-data mode only) /login simply
+ * redirects to / and RequireAuth lets everyone in. The private screens are lazy-loaded (code splitting); Layout shows a
+ * spinner in the content area while a screen's code loads.
  */
 
+import { lazy } from 'react';
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { RecoveryRedirect, RequireAdmin, RequireAuth } from '@/auth/AuthProvider';
 import { Layout } from '@/components/Layout';
-import Today from '@/pages/Today';
-import BuyerDetail from '@/pages/BuyerDetail';
-import Buyers from '@/pages/Buyers';
-import Pipeline from '@/pages/Pipeline';
-import ProductDetail from '@/pages/ProductDetail';
-import QuoteTemplate from '@/pages/QuoteTemplate';
-import ProductEdit from '@/pages/ProductEdit';
-import DailyRatesPage from '@/pages/DailyRatesPage';
-import Inquiries from '@/pages/Inquiries';
-import PartnerDetail from '@/pages/PartnerDetail';
-import Partners from '@/pages/Partners';
-import InquiryDetail from '@/pages/InquiryDetail';
-import InquiryEdit from '@/pages/InquiryEdit';
-import Followups from '@/pages/Followups';
-import Products from '@/pages/Products';
-import Settings from '@/pages/Settings';
+import { CREATE_ADMIN_PATH } from '@/lib/config';
 import CreateAdmin from '@/pages/CreateAdmin';
 import Login from '@/pages/Login';
 import SignUp from '@/pages/SignUp';
-import Orders from '@/pages/Orders';
-import QuoteDetail from '@/pages/QuoteDetail';
-import QuoteForm from '@/pages/QuoteForm';
-import Quotes from '@/pages/Quotes';
 import ResetPassword from '@/pages/ResetPassword';
+
+/** Screens are loaded on first visit (code splitting), so the first page load only carries the shell and the sign-in screens. */
+const QuoteForm = lazy(() => import('@/pages/QuoteForm'));
+const QuoteTemplate = lazy(() => import('@/pages/QuoteTemplate'));
+const Settings = lazy(() => import('@/pages/Settings'));
+const PartnerDetail = lazy(() => import('@/pages/PartnerDetail'));
+const ProductEdit = lazy(() => import('@/pages/ProductEdit'));
+const QuoteDetail = lazy(() => import('@/pages/QuoteDetail'));
+const Quotes = lazy(() => import('@/pages/Quotes'));
+const Pipeline = lazy(() => import('@/pages/Pipeline'));
+const Buyers = lazy(() => import('@/pages/Buyers'));
+const BuyerDetail = lazy(() => import('@/pages/BuyerDetail'));
+const Products = lazy(() => import('@/pages/Products'));
+const ProductDetail = lazy(() => import('@/pages/ProductDetail'));
+const DailyRatesPage = lazy(() => import('@/pages/DailyRatesPage'));
+const Partners = lazy(() => import('@/pages/Partners'));
+const Inquiries = lazy(() => import('@/pages/Inquiries'));
+const InquiryDetail = lazy(() => import('@/pages/InquiryDetail'));
+const InquiryEdit = lazy(() => import('@/pages/InquiryEdit'));
+const Followups = lazy(() => import('@/pages/Followups'));
+const Orders = lazy(() => import('@/pages/Orders'));
+const Today = lazy(() => import('@/pages/Today'));
 
 /**
  * Top-level route element: renders <RecoveryRedirect /> (watches for the password-recovery event and sends
@@ -48,12 +52,10 @@ const Root = () => (<><RecoveryRedirect /><Outlet /></>);
  * - RequireAuth: everything below needs a signed-in user with a profile (see auth/AuthProvider.tsx; in
  *   AUTH_BYPASS mode the sign-in check is skipped).
  * - Layout: sidebar (desktop) / tab bar (phone) around the screen.
- * - /, /quotes, /quotes/new, /quotes/:id/edit, /quotes/:id: Today, Quotes, QuoteForm (new), QuoteForm (edit
- *   a draft), QuoteDetail.
- * - /buyers, /buyers/:id: Buyers, BuyerDetail.
- * - Only Quotes and Buyers are routed on main for now. Today, Products, Settings, Marketing and Trade
- *   intelligence are on the feature-0002 branch. "/" and any unknown URL redirect to /quotes (replace, so Back
- *   does not loop).
+ * - Private screens: / (Today), /pipeline, /buyers, /buyers/:id, /inquiries (+ new, :id, :id/edit), /quotes (+ new, template, :id,
+ *   :id/edit), /follow-ups, /products (+ new, :name, :name/edit), /daily-rates, /partners (+ :id), /orders and /settings (admin only).
+ *   /quotations redirects to /quotes; any unknown URL redirects to / (replace, so Back does not loop).
+ * - Marketing and Trade intelligence are not part of the app (removed); there is no /marketing route.
  */
 export const router = createBrowserRouter([
   {
@@ -62,7 +64,7 @@ export const router = createBrowserRouter([
       { path: '/login', element: <Login /> },
       { path: '/sign-up', element: <SignUp /> },
       // first-time setup of the administrator: public, works once (the API decides); see pages/CreateAdmin.tsx
-      { path: '/jm-masala-crm-create-admin-user', element: <CreateAdmin /> },
+      { path: CREATE_ADMIN_PATH, element: <CreateAdmin /> },
       { path: '/reset-password', element: <ResetPassword /> },
       {
         element: <RequireAuth />,

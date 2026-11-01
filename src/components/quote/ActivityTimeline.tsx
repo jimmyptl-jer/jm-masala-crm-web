@@ -19,16 +19,16 @@ import { ACTIVITY_ICON } from './shared';
  * activities (audit trail).
  * @param props.activities - `quote.activities` from GET /quotes/:id, newest first (the API orders them; this
  *   component does not re-sort).
- * @param props.onLog - called when the button is tapped; the parent opens LogActivitySheet.
+ * @param props.onLog - called when the button is tapped; the parent opens LogActivitySheet. Omitted = no button (live mode without the route).
  * No API calls and no local state here.
  */
-export function ActivityTimeline({ activities, onLog }: { activities: Activity[]; onLog: () => void }) {
+export function ActivityTimeline({ activities, onLog }: { activities: Activity[]; onLog?: () => void }) {
   const d = t.quoteDetail;
   return (
     <section aria-labelledby="activity-h">
       <div className="mb-2 flex items-center justify-between gap-3">
         <h2 id="activity-h" className="text-[17px] font-bold leading-6 text-ink">{d.activityTitle}</h2>
-        <Button variant="secondary" onClick={onLog}>{d.logButton}</Button>
+        {onLog && <Button variant="secondary" onClick={onLog}>{d.logButton}</Button>}
       </div>
       <Card>
         {activities.length === 0 ? (

@@ -7,9 +7,11 @@
 import { buyerForm, common, login, nav } from './strings/common';
 import { buyers } from './strings/buyers';
 import { crm } from './strings/buyersCrm';
+import { buyersPage } from './strings/buyersPage';
+import { followups } from './strings/followups';
 import { inquiries } from './strings/inquiries';
+import { orders } from './strings/orders';
 import { partners } from './strings/partners';
-import { mkt } from './strings/marketing';
 import { pipeline } from './strings/pipeline';
 import { products } from './strings/products';
 import { quoteDetail } from './strings/quoteDetail';
@@ -18,7 +20,6 @@ import { quotes } from './strings/quotes';
 import { send } from './strings/send';
 import { setup, signup } from './strings/setup';
 import { settings } from './strings/settings';
-import { ti } from './strings/trade';
 import { today } from './strings/today';
 
 /**
@@ -27,4 +28,4 @@ import { today } from './strings/today';
  * and read e.g. t.buyers.title. Some entries are plain strings, some are functions that build a string from
  * a number or name (e.g. t.buyers.quoteCount(3)). Add a language by swapping this object (SRS section 8).
  */
-export const t = { common, nav, login, buyerForm, today, quotes, quoteForm, quoteDetail, buyers, products, settings, send, crm, mkt, ti, pipeline, inquiries, partners, setup, signup };
+export const t = { common, nav, login, buyerForm, today, quotes, quoteForm, quoteDetail, buyers, products, settings, send, crm, pipeline, inquiries, partners, buyersPage, orders, followups, setup, signup };

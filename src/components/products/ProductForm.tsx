@@ -21,6 +21,7 @@ import { ArrowUpToLine, ImagePlus, Plus, Trash2 } from 'lucide-react';
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Button, ErrorNote, Input, Select, Spinner, Textarea, useToast } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
+import { hasRoute, PROBE_ID } from '@/lib/config';
 import { useProducts } from '@/lib/hooks';
 import type { Product } from '@/lib/types';
 import { APPROVED_PRODUCT_NAMES, isApprovedProduct } from '@/lib/products';
@@ -120,6 +121,9 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
 
   // packaging image: belongs to the first saved grade and is saved straight away (its own routes)
   const primary = existing.find((p) => !p.archived) ?? existing[0];
+  // image routes may not be live yet (config.ts hasRoute): then the image can only be looked at
+  const canImage = hasRoute('POST', `/products/${PROBE_ID}/image`);
+  const canRemoveImage = hasRoute('DELETE', `/products/${PROBE_ID}/image`);
   const fileRef = useRef<HTMLInputElement>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(primary?.image_url ?? null);
   const [imageBusy, setImageBusy] = useState(false);
@@ -309,7 +313,7 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
             <FormCard id="pf-basic" n={1} title={s.secBasic}>
               <Select label={s.name} value={name} onChange={(e) => setName(e.target.value)} error={errors.name}>
                 {name && !APPROVED_PRODUCT_NAMES.includes(name as typeof APPROVED_PRODUCT_NAMES[number]) && <option value={name}>{name} · legacy item</option>}
-                <option value="">Choose a product</option>
+                <option value="">{s.chooseProduct}</option>
                 {APPROVED_PRODUCT_NAMES.map((n) => <option key={n} value={n}>{n}</option>)}
               </Select>
               <Select label={s.statusLabel} value={status} onChange={(e) => setStatus(e.target.value as 'draft' | 'active')} hint={s.statusHint}>
@@ -329,13 +333,13 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
                   <div className="grid h-32 w-full place-items-center overflow-hidden rounded-lg border border-slate-200 bg-forest-50">
                     {imageUrl ? <img src={imageUrl} alt={s.imageAlt(primary.name)} className="h-full w-full object-cover" /> : <ImagePlus className="h-7 w-7 text-fg-muted" aria-hidden />}
                   </div>
-                  {!imageUrl && <p className="text-sm text-slate-500">{s.imageNone}</p>}
+                  {!imageUrl && <p className="text-sm text-slate-500">{canImage ? s.imageNone : s.imageUnavailable}</p>}
                   <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" tabIndex={-1} aria-hidden onChange={(e) => void pickImage(e.target.files?.[0])} />
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="secondary" loading={imageBusy} onClick={() => fileRef.current?.click()}>{imageUrl ? s.imageChange : s.imageChoose}</Button>
-                    {imageUrl && <Button variant="secondary" className="text-red-700" disabled={imageBusy} onClick={() => void removeImage()}>{s.imageRemove}</Button>}
+                    {canImage && <Button variant="secondary" loading={imageBusy} onClick={() => fileRef.current?.click()}>{imageUrl ? s.imageChange : s.imageChoose}</Button>}
+                    {imageUrl && canRemoveImage && <Button variant="secondary" className="text-red-700" disabled={imageBusy} onClick={() => void removeImage()}>{s.imageRemove}</Button>}
                   </div>
-                  <p className="text-xs text-slate-500">{s.imageHint}</p>
+                  {canImage && <p className="text-xs text-slate-500">{s.imageHint}</p>}
                   {imageError && <p role="alert" className="text-sm text-red-700">{imageError}</p>}
                   {imageFatal !== null && <ErrorNote error={imageFatal} />}
                 </>

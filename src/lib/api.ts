@@ -2,13 +2,14 @@
  * Client for the quotes API: every screen talks to the backend through `api` (get / post / put / patch /
  * del / upload / download), plus the helpers `qs` (query strings), `pdfUrl` (signed PDF link) and the error
  * class `ApiError`.
- * Mixed mode: with VITE_API_URL set, the calls listed in lib/config.ts (LIVE_ROUTES) go to the real API with the login
- * token (localStorage, key jm-login-token); every other call still answers from the in-memory sample data in lib/mock.
+ * Two modes. Live (VITE_API_URL set): the calls listed in lib/config.ts (LIVE_ROUTES) go to the real API with the Supabase
+ * access token; any other call throws ApiError(501, 'not_available') and never answers from sample data. Sample-data mode
+ * (VITE_API_URL empty, dev or the explicit demo build): every call answers from the in-memory sample data in lib/mock.
  * Errors: a failed call throws an ApiError built from { error: { code, message, fields? } }.
  * Used by lib/hooks.ts, auth/AuthProvider.tsx, pages/*, components/*.
  */
 
-import { API_URL, isLive } from './config';
+import { API_URL, isLive, LIVE_MODE } from './config';
 import { supabase } from './supabase';
 import { mockRequest } from './mock';
 
@@ -37,10 +38,13 @@ async function endSessionIfInvalid(): Promise<void> {
  * The one place every JSON and form request goes through; `api.get` etc. are thin wrappers.
  * @param method — HTTP method. @param path — path starting with '/', query string included (see qs()).
  * @param body — object, or a FormData for uploads (the mock does not read files).
- * @returns the answer typed as T. @throws ApiError, e.g. 501 'needs_api' for anything the mock does not cover.
+ * @returns the answer typed as T. @throws ApiError, e.g. 501 'not_available' in live mode for a route the API does not serve yet.
  */
 async function request<T>(method: string, path: string, body?: unknown, isForm = false): Promise<T> {
-  if (!isLive(method, path)) return mockRequest<T>(method, path, body instanceof FormData ? undefined : body);
+  if (!isLive(method, path)) {
+    if (LIVE_MODE) throw new ApiError(501, 'not_available', 'This is not available yet');
+    return mockRequest<T>(method, path, body instanceof FormData ? undefined : body);
+  }
 
   // real API: the Supabase access token of the signed-in person (the client renews it before it expires)
   const token = (await supabase.auth.getSession()).data.session?.access_token ?? null;
@@ -84,7 +88,7 @@ export const api = {
   /**
    * multipart upload (Excel import, logo, product packaging image).
    * @param path — upload route, e.g. `/products/${id}/image`. @param file — sent as the form field `file`.
-   * @param fields — optional extra text fields sent with the file (e.g. { name, kind } for marketing files).
+   * @param fields — optional extra text fields sent with the file (none are used today).
    * @returns the JSON body as T (the saved record or an import report).
    */
   upload: <T>(path: string, file: File, fields: Record<string, string> = {}) => {
@@ -100,8 +104,22 @@ export const api = {
    * Side effects: fetches the file, then clicks a temporary link to the in-memory blob so the browser saves
    * it; the blob URL is released after 10 s. Unlike request(), a 401 here does not sign the user out.
    */
-  async download(path: string, _filename: string): Promise<void> {
-    throw new ApiError(501, 'needs_api', `Downloads are not available yet: ${path.split('?')[0]} needs the API, which is paused.`);
+  async download(path: string, filename: string): Promise<void> {
+    if (!isLive('GET', path)) throw new ApiError(501, 'not_available', 'This is not available yet');
+    const token = (await supabase.auth.getSession()).data.session?.access_token ?? null;
+    const res = await fetch(`${API_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) {
+      const data = (res.headers.get('content-type') ?? '').includes('application/json') ? await res.json().catch(() => null) : null;
+      throw new ApiError(res.status, data?.error?.code ?? 'error', data?.error?.message ?? 'Download failed', data?.error?.fields);
+    }
+    const url = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   },
 };
 

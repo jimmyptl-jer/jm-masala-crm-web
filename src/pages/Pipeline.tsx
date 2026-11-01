@@ -22,6 +22,7 @@ import { useMediaQuery } from '@/components/quote/shared';
 import { Button, EmptyState, ErrorNote, PageHeader, Sheet, Spinner } from '@/components/ui';
 import { stageColors } from '@/lib/design-tokens';
 import { api } from '@/lib/api';
+import { hasRoute } from '@/lib/config';
 import { date, todayIST } from '@/lib/format';
 import { useBuyerSummary, useBuyers, useDebounced, useTeam } from '@/lib/hooks';
 import { APPROVED_PRODUCT_NAMES } from '@/lib/products';
@@ -130,6 +131,7 @@ export default function Pipeline() {
   const counts = FUNNEL.map((f) => ({ ...f, n: filtered.filter((b) => f.stages.includes(b.stage)).length }));
   const totalN = Math.max(1, counts.reduce((n, c) => n + c.n, 0));
   const s = summary.data;
+  const summaryOn = hasRoute('GET', '/buyers/summary');
   const filtering = !!(urlQ || country || product || owner || dueOnly);
   const ctl = 'h-11 rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg hover:border-line-strong focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25';
   const toggleSort = (key: SortKey) => setSort((cur) => (cur.key === key ? { key, desc: !cur.desc } : { key, desc: false }));
@@ -162,11 +164,13 @@ export default function Pipeline() {
 
       <section aria-label={p.kpiLabel} className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <Kpi hero label={p.kpiOpen} value={buyersQuery.isPending ? '—' : open.length} sub={p.kpiOpenSub} />
-        <Kpi label={p.kpiQualified} value={s ? s.totals.qualified : '—'} sub={p.kpiQualifiedSub} />
-        <Kpi label={p.kpiWin} value={s ? (s.totals.conversion_rate === null ? '—' : `${s.totals.conversion_rate}%`) : '—'} sub={p.kpiWinSub} />
+        <Kpi label={p.kpiQualified} value={s ? s.totals.qualified : '—'} sub={summaryOn ? p.kpiQualifiedSub : t.common.notAvailable} />
+        <Kpi label={p.kpiWin} value={s ? (s.totals.conversion_rate === null ? '—' : `${s.totals.conversion_rate}%`) : '—'} sub={summaryOn ? p.kpiWinSub : t.common.notAvailable} />
         <Kpi label={p.kpiDue} value={buyersQuery.isPending ? '—' : dueCount} tone={overdue > 0 ? 'danger' : undefined} sub={overdue > 0 ? p.kpiDueOverdue(overdue) : p.kpiDueNone}
           onClick={() => setParam({ due: dueOnly ? '' : '1' })} />
       </section>
+
+      {quotes.data && quotes.data.total > quotes.data.data.length && <p role="status" className="rounded-lg border border-line bg-surface-muted px-4 py-3 text-sm text-ink-muted">{t.common.listTruncated(quotes.data.data.length, quotes.data.total)}</p>}
 
       {/* funnel: one bar, segment width = buyers per stage; click a segment to jump to its column */}
       {!buyersQuery.isPending && (

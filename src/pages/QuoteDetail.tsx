@@ -18,6 +18,7 @@ import { ArrowLeft, Copy, Download, MoreHorizontal, Pencil, Share2, Trash2 } fro
 import { useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '@/lib/api';
+import { hasRoute, PROBE_ID } from '@/lib/config';
 import { date, todayIST } from '@/lib/format';
 import type { QuoteDetail as QuoteDetailT } from '@/lib/types';
 import { Button, Card, EmptyState, ErrorNote, Sheet, Spinner, StatusBadge, errorMessage, useToast } from '@/components/ui';
@@ -147,6 +148,15 @@ function Detail({ quote }: { quote: QuoteDetailT }) {
     if (sp.has('share')) setSp((p) => { p.delete('share'); return p; }, { replace: true });
   };
 
+  // controls whose API route is not live yet are hidden (config.ts hasRoute); adding the route to LIVE_ROUTES turns them on
+  const can = {
+    status: hasRoute('PATCH', `/quotes/${PROBE_ID}/status`),
+    followup: hasRoute('PATCH', `/quotes/${PROBE_ID}/followup`),
+    log: hasRoute('POST', `/quotes/${PROBE_ID}/activities`),
+    revise: hasRoute('POST', `/quotes/${PROBE_ID}/revise`),
+    duplicate: hasRoute('POST', `/quotes/${PROBE_ID}/duplicate`),
+    remove: hasRoute('DELETE', `/quotes/${PROBE_ID}`),
+  };
   // no quote number yet = still the very first draft (never issued): edit/delete only, nothing to share
   const neverIssued = quote.quote_no === null;
   // Sent or Negotiating: the buyer has the quote and a decision is pending (follow-up date applies)
@@ -160,7 +170,7 @@ function Detail({ quote }: { quote: QuoteDetailT }) {
   // heading text: the printed number of the latest revision (e.g. QT/26-27/0042-R1) or "Draft"
   const label = quote.number ?? d.draftNumber;
   // "Revise" is offered only for an issued Sent/Negotiating/Expired quote with no open draft revision (BR-02)
-  const canRevise = !neverIssued && quote.open_draft_revision === null && ['sent', 'negotiating', 'expired'].includes(quote.status);
+  const canRevise = can.revise && !neverIssued && quote.open_draft_revision === null && ['sent', 'negotiating', 'expired'].includes(quote.status);
   // the selected tab is an issued (frozen) revision, so it has a PDF and can be shared
   const issuedSelected = selected?.state === 'issued';
   // dates are YYYY-MM-DD strings, so plain string comparison orders them correctly; today is the India date
@@ -264,9 +274,11 @@ function Detail({ quote }: { quote: QuoteDetailT }) {
                 <span className={clsx(overdue && 'font-semibold text-red-700')}>
                   {quote.next_followup ? date(quote.next_followup) : d.noFollowup}{overdue && ` (${d.followupOverdue})`}
                 </span>
-                <Button variant="ghost" className="px-2" onClick={() => { setFollowup(quote.next_followup ?? ''); setSheet('followup'); }}>
-                  <Pencil className="h-4 w-4" aria-hidden />{d.changeFollowup}
-                </Button>
+                {can.followup && (
+                  <Button variant="ghost" className="px-2" onClick={() => { setFollowup(quote.next_followup ?? ''); setSheet('followup'); }}>
+                    <Pencil className="h-4 w-4" aria-hidden />{d.changeFollowup}
+                  </Button>
+                )}
               </dd>
             </div>
           )}
@@ -289,7 +301,7 @@ function Detail({ quote }: { quote: QuoteDetailT }) {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <RouterButton to={`/quotes/${quote.id}/edit`}><Pencil className="h-4 w-4" aria-hidden />{d.editDraft}</RouterButton>
-            <Button variant="danger" onClick={() => setSheet('delete')}><Trash2 className="h-4 w-4" aria-hidden />{d.deleteDraft}</Button>
+            {can.remove && <Button variant="danger" onClick={() => setSheet('delete')}><Trash2 className="h-4 w-4" aria-hidden />{d.deleteDraft}</Button>}
           </div>
         </Card>
       )}
@@ -304,12 +316,12 @@ function Detail({ quote }: { quote: QuoteDetailT }) {
           ) : canRevise ? (
             <Button className="col-span-3" onClick={() => revise.mutate()} loading={revise.isPending}>{d.revise}</Button>
           ) : null}
-          <Button variant="secondary" onClick={() => setSheet('status')}>{d.changeStatus}</Button>
+          {can.status && <Button variant="secondary" onClick={() => setSheet('status')}>{d.changeStatus}</Button>}
           <Button variant="secondary" onClick={() => setSheet('share')} disabled={!pdfOk}><Share2 className="h-4 w-4" aria-hidden />{d.share}</Button>
           <Button variant="secondary" className="hidden md:inline-flex" onClick={() => void downloadPdf()} loading={downloading} disabled={!pdfOk}>
             <Download className="h-4 w-4" aria-hidden />{d.downloadPdf}
           </Button>
-          <Button variant="secondary" className="hidden md:inline-flex" onClick={() => setSheet('duplicate')}><Copy className="h-4 w-4" aria-hidden />{d.duplicate}</Button>
+          {can.duplicate && <Button variant="secondary" className="hidden md:inline-flex" onClick={() => setSheet('duplicate')}><Copy className="h-4 w-4" aria-hidden />{d.duplicate}</Button>}
           <Button variant="secondary" className="md:hidden" onClick={() => setSheet('more')}><MoreHorizontal className="h-4 w-4" aria-hidden />{d.more}</Button>
         </section>
       )}
@@ -325,7 +337,7 @@ function Detail({ quote }: { quote: QuoteDetailT }) {
         </section>
       )}
 
-      <ActivityTimeline activities={quote.activities} onLog={() => setSheet('log')} />
+      <ActivityTimeline activities={quote.activities} onLog={can.log ? () => setSheet('log') : undefined} />
 
       {/* sheets */}
       <StatusSheet open={sheet === 'status'} onClose={close} quote={quote} />
@@ -334,7 +346,7 @@ function Detail({ quote }: { quote: QuoteDetailT }) {
       {selected && issuedSelected && (
         <ShareSheet
           open={sheet === 'share'} onClose={close} quoteId={quote.id} revision={selected.revision}
-          number={selected.number ?? label} buyer={quote.buyer} onLog={() => setSheet('log')}
+          number={selected.number ?? label} buyer={quote.buyer} onLog={can.log ? () => setSheet('log') : undefined}
         />
       )}
 
@@ -343,7 +355,7 @@ function Detail({ quote }: { quote: QuoteDetailT }) {
           <Button variant="secondary" className="w-full" onClick={() => void downloadPdf()} loading={downloading} disabled={!pdfOk}>
             <Download className="h-4 w-4" aria-hidden />{d.downloadPdf}
           </Button>
-          <Button variant="secondary" className="w-full" onClick={() => setSheet('duplicate')}><Copy className="h-4 w-4" aria-hidden />{d.duplicate}</Button>
+          {can.duplicate && <Button variant="secondary" className="w-full" onClick={() => setSheet('duplicate')}><Copy className="h-4 w-4" aria-hidden />{d.duplicate}</Button>}
         </div>
       </Sheet>
 

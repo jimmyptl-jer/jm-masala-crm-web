@@ -35,6 +35,7 @@ import type { CalcResult, Currency, Product, QuoteType } from '@/lib/types';
 import { t } from '@/strings';
 import { Input, NumberInput, Select } from '@/components/ui';
 import { isOtherPacking, OTHER, type LineState } from './model';
+import { hasRoute, PROBE_ID } from '@/lib/config';
 import { PriceHintChips } from './PriceHintChips';
 
 // all words for the quote form come from strings/quoteForm.ts
@@ -156,7 +157,7 @@ export function LineCard({ index, line, product, catalogue, currency, type, buye
         </div>
       )}
 
-      {line.product_id && (
+      {line.product_id && hasRoute('GET', `/products/${PROBE_ID}/price-hints`) && (
         <div className="mt-3"><PriceHintChips productId={line.product_id} buyerId={buyerId} currency={currency} onPick={(rate) => onChange({ rate }, ['rate'])} /></div>
       )}
 

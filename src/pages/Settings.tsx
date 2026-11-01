@@ -15,7 +15,7 @@ import { ImportPanel } from '@/components/settings/ImportPanel';
 import { Section } from '@/components/settings/shared';
 import { TermsPanel } from '@/components/settings/TermsEditor';
 import { UsersPanel } from '@/components/settings/UsersPanel';
-import { AUTH_BYPASS } from '@/lib/config';
+import { AUTH_BYPASS, hasRoute } from '@/lib/config';
 import { ErrorNote, PageHeader, Spinner } from '@/components/ui';
 import { useSettings } from '@/lib/hooks';
 import { t } from '@/strings';
@@ -57,7 +57,7 @@ export default function Settings() {
           <Section title={s.defaults} open={open === 'defaults'} onToggle={() => toggle('defaults')}><DefaultsPanel settings={data} /></Section>
           {/* user accounts and roles belong to login, which is switched off for now (set up later) */}
           {!AUTH_BYPASS && <Section title={s.users} open={open === 'users'} onToggle={() => toggle('users')}><UsersPanel /></Section>}
-          <Section title={s.import} open={open === 'import'} onToggle={() => toggle('import')}><ImportPanel /></Section>
+          {hasRoute('POST', '/import/products') && <Section title={s.import} open={open === 'import'} onToggle={() => toggle('import')}><ImportPanel /></Section>}
         </div>
       )}
     </div>

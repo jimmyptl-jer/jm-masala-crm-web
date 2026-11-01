@@ -23,6 +23,7 @@ import { useBuyers, useDebounced, useProducts } from '@/lib/hooks';
 import type { QuoteDetail, QuoteList, QuoteListRow, QuoteStatus } from '@/lib/types';
 import { Button, EmptyState, ErrorNote, PageHeader, StatusBadge, errorMessage, useToast } from '@/components/ui';
 import { DuplicateSheet } from '@/components/quote/DuplicateSheet';
+import { hasRoute, PROBE_ID } from '@/lib/config';
 import { QuoteRow } from '@/components/quote/QuoteRow';
 import { RouterButton, usePdfFetcher } from '@/components/quote/shared';
 import { t } from '@/strings';
@@ -81,7 +82,7 @@ function RowMenu({ q }: { q: QuoteListRow }) {
         <>
           <button type="button" aria-label="Close menu" className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} />
           <div role="menu" className="absolute right-0 z-20 mt-1 w-52 rounded-xl border border-line-strong bg-surface p-1 shadow-pop">
-            <button type="button" role="menuitem" className={item} onClick={() => void duplicate()}>{s.menuDuplicate}</button>
+            {hasRoute('POST', `/quotes/${PROBE_ID}/duplicate`) && <button type="button" role="menuitem" className={item} onClick={() => void duplicate()}>{s.menuDuplicate}</button>}
             <button type="button" role="menuitem" className={item} disabled={q.current_revision === null} title={q.current_revision === null ? s.menuNoPdf : undefined} onClick={() => void pdf()}>{s.menuPdf}</button>
             <button type="button" role="menuitem" className={item} disabled title={s.menuPiNote}>{s.menuPi}</button>
             <button type="button" role="menuitem" className={item} disabled title={s.menuArchiveNote}>{s.menuArchive}</button>
@@ -213,7 +214,7 @@ export default function Quotes() {
         subtitle={s.pageSubtitle}
         actions={(
           <>
-            <Button variant="secondary" onClick={() => void exportXlsx()} loading={exporting} disabled={exporting}>{!exporting && <Download className="h-4 w-4" aria-hidden />}{s.export}</Button>
+            {hasRoute('GET', '/quotes/export.xlsx') && <Button variant="secondary" onClick={() => void exportXlsx()} loading={exporting} disabled={exporting}>{!exporting && <Download className="h-4 w-4" aria-hidden />}{s.export}</Button>}
             <RouterButton to="/quotes/new" variant="gold">{s.newQuotation}</RouterButton>
           </>
         )}

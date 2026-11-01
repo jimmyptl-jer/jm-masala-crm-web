@@ -68,7 +68,8 @@ interface Props {
   number: string;
   buyer: Buyer;
   /** Called when the user taps "Log activity" after sharing. */
-  onLog: () => void;
+  /** Omitted = the "Log this" button is not shown (the activity route is not live yet). */
+  onLog?: () => void;
 }
 
 /**
@@ -195,8 +196,8 @@ export function ShareSheet({ open, onClose, quoteId, revision, number, buyer, on
 
             {shared && (
               <div className="rounded-lg bg-gold-100 p-3">
-                <p className="mb-2 text-sm text-forest-900">{d.shareDone}</p>
-                <Button variant="gold" className="w-full" onClick={() => { onClose(); onLog(); }}>{d.shareLogIt}</Button>
+                <p className="text-sm text-forest-900">{d.shareDone}</p>
+                {onLog && <Button variant="gold" className="mt-2 w-full" onClick={() => { onClose(); onLog(); }}>{d.shareLogIt}</Button>}
               </div>
             )}
           </>

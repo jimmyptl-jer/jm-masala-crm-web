@@ -1,7 +1,8 @@
 # Image for the web service: a multi-stage build that compiles the React/Vite site and serves it with
 # nginx (see nginx.conf). Built and deployed on its own:
-#   docker build --build-arg VITE_API_URL=https://<api>/api/v1 --build-arg VITE_SIMPLE_AUTH=true -t jm-masala-web ./web
-# For a login through Supabase instead, also pass --build-arg VITE_SUPABASE_URL=... --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=...
+#   docker build --build-arg VITE_API_URL=https://<api>/api/v1 \n#     --build-arg VITE_SUPABASE_URL=... --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=... -t jm-masala-web ./web
+# Login is through Supabase, so pass --build-arg VITE_SUPABASE_URL=... --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=...
+# The build FAILS without VITE_API_URL (the sample-data demo needs --build-arg VITE_DEMO=true on purpose).
 # These values are baked into the bundle at build time (changing them needs a rebuild) and are public by
 # nature; never pass the Supabase service-role key.
 
@@ -20,8 +21,8 @@ ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
 # Full address of the API including /api/v1, e.g. https://jm-masala-api.onrender.com/api/v1
 ARG VITE_API_URL
-# true = the API's fixed-user login (pair with SIMPLE_AUTH=true on the API).
-ARG VITE_SIMPLE_AUTH
+# true = build the sample-data demo without an API (never for real use).
+ARG VITE_DEMO
 # tsc type-check, then vite build -> /app/dist. The ARG values above are visible to this step and Vite
 # embeds them in the JavaScript. VITE_AUTH_BYPASS is not declared as an ARG here, so a Docker build always
 # has the login enabled (bypass stays off).

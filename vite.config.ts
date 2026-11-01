@@ -7,9 +7,16 @@
 
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // A production build without VITE_API_URL would ship the sample-data demo as if it were the real app, so it fails
+  // unless the demo is asked for explicitly with VITE_DEMO=true (see .env.example).
+  const env = loadEnv(mode, import.meta.dirname, 'VITE_');
+  if (mode === 'production' && !env.VITE_API_URL && env.VITE_DEMO !== 'true') {
+    throw new Error('VITE_API_URL is not set. A production build needs the API address (e.g. https://api.example.com/api/v1). To build the sample-data demo on purpose, set VITE_DEMO=true.');
+  }
+  return {
   // Enables the React plugin: JSX/TSX compilation and fast refresh (live reload of components) in dev.
   plugins: [
     react(),
@@ -33,4 +40,5 @@ export default defineConfig({
   // host: true listens on all network interfaces, so the app can be opened from a phone on the same Wi-Fi.
   // There is no proxy: the browser calls the API directly at VITE_API_URL.
   server: { port: 5173, strictPort: true, host: true },
+};
 });

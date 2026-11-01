@@ -27,6 +27,7 @@ export const settings = {
   logoNone: 'No logo uploaded yet.',
   logoAlt: 'Current company logo',
   logoChoose: 'Choose logo image',
+  logoUnavailable: 'Logo upload is not available yet.',
   logoChange: 'Change logo',
   logoHint: 'PNG or JPEG, up to 2 MB. Printed at the top of every quotation.',
   logoBadType: 'The logo must be a PNG or JPEG image.',

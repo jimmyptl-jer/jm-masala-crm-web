@@ -46,7 +46,7 @@ web/src/
 │  ├─ format.ts             Show money (Indian grouping for INR), dates (India time), quantities, WhatsApp links.
 │  ├─ hooks.ts              useBuyers / useProducts / useSettings, useDebounced, useUnsavedChanges.
 │  ├─ supabase.ts           The browser's Supabase client (login only; public key only).
-│  ├─ config.ts             The AUTH_BYPASS switch.
+│  ├─ config.ts             AUTH_BYPASS, API_URL and LIVE_ROUTES (which calls are live; hasRoute hides the rest).
 │  └─ india.ts              GST state codes list; GSTIN pattern.
 ├─ components/
 │  ├─ ui.tsx                Button, inputs, Select, Segmented toggle, Card, StatusBadge, Sheet (bottom drawer), Toasts.
@@ -91,7 +91,8 @@ Button ──useMutation──▶ api.post/patch/put(...) ──▶ API ──�
 |---|---|
 | `VITE_API_URL` | Where the API is, including `/api/v1` (e.g. `http://localhost:3000/api/v1`) |
 | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase project and its **public** key (used only for login) |
-| `VITE_AUTH_BYPASS` | `true` = no login screen (pair with `AUTH_BYPASS=true` on the API) |
+| `VITE_AUTH_BYPASS` | `true` = no login screen. Sample-data mode only (`VITE_API_URL` empty); the API has no bypass, so it cannot be used against the real API |
+| `VITE_DEMO` | `true` = allow a production build without `VITE_API_URL` (the sample-data demo). Without `VITE_API_URL` and without this, `npm run build` fails |
 
 These values are baked into the browser bundle at build time, so **only public values belong here** — never the
 service-role key or the database password.

@@ -29,6 +29,8 @@ export const products = {
   imageTitle: 'Packaging image',
   imageAlt: (name: string) => `Packaging of ${name}`,
   imageNone: 'No packaging image yet.',
+  imageUnavailable: 'Packaging images are not available yet.',
+  chooseProduct: 'Choose a product',
   imageSaveFirst: 'Save the product first, then you can add its packaging image.',
   imageChoose: 'Choose image',
   imageChange: 'Change image',

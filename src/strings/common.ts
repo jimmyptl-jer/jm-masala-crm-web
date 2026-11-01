@@ -30,6 +30,11 @@ export const common = {
   lostReason: { price: 'Price', quality: 'Quality', delivery: 'Delivery time', no_reply: 'No reply', other: 'Other' },
   activityKind: { call: 'Call', whatsapp: 'WhatsApp', email: 'Email', meeting: 'Meeting', note: 'Note', status_change: 'Status' },
   unit: { MT: 'MT', KG: 'KG', QTL: 'QTL' },
+  /** Live mode: a control or panel whose API route does not exist yet. */
+  notAvailable: 'This is not available yet',
+  notAvailableHint: 'It will appear here once the server supports it.',
+  /** Shown above a list that was cut off at the page size: `shown` rows of `total`. */
+  listTruncated: (shown: number, total: number) => `Showing the first ${shown} of ${total}. Totals and lists on this page cover only these ${shown}.`,
   unsavedChanges: 'You have unsaved changes. Leave without saving?',
 };
 
@@ -65,7 +70,7 @@ export const nav = {
   palettePages: 'Pages', paletteBuyers: 'Buyers', palettePartners: 'Partners', paletteQuotes: 'Quotations', paletteNone: 'Nothing found',
   roleOwner: 'Owner', roleSales: 'Sales',
   proforma: 'Proforma invoices', samples: 'Samples', shipments: 'Shipments', payments: 'Payments',
-  liveApi: 'Live API: buyers, quotation list, products. Other data is sample.',
+  demoWorkspace: 'Demo workspace · sample data', sampleWorkspace: 'Sample data workspace', sampleBadge: 'Sample data', fallbackName: 'JM Masala',
   soon: 'Soon', soonHint: 'Coming soon', quoteTemplate: 'Quotation template',
 };
 

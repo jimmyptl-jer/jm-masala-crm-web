@@ -16,14 +16,14 @@
 import clsx from 'clsx';
 import { useQuery } from '@tanstack/react-query';
 import { Banknote, Bell, Columns3, FileSpreadsheet, FileText, FlaskConical, Handshake, IndianRupee, Inbox, LayoutDashboard, LogOut, MoreHorizontal, Package, PackageCheck, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings as SettingsIcon, Ship, Users, Workflow } from 'lucide-react';
-import { useEffect, useMemo, useState, type ElementType, type ReactNode } from 'react';
+import { Suspense, useEffect, useMemo, useState, type ElementType, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
 import { CommandPalette } from '@/components/CommandPalette';
 import { useMediaQuery } from '@/components/quote/shared';
-import { Sheet } from '@/components/ui';
+import { Sheet, Spinner } from '@/components/ui';
 import { api } from '@/lib/api';
-import { API_URL, AUTH_BYPASS, MOCK_API } from '@/lib/config';
+import { AUTH_BYPASS, LIVE_MODE } from '@/lib/config';
 import { useBuyerSummary } from '@/lib/hooks';
 import type { QuoteList } from '@/lib/types';
 import { t } from '@/strings';
@@ -54,6 +54,7 @@ export function Layout() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
+  // the follow-ups-due badge needs GET /buyers/summary; until that route is live there is no badge (not a made-up 0)
   const due = useBuyerSummary().data?.totals.followups_due ?? 0;
   const drafts = useQuery({ queryKey: ['quotes', 'nav-drafts'], queryFn: () => api.get<QuoteList>('/quotes?status=draft&limit=1').then((r) => r.total), staleTime: 60_000 }).data ?? 0;
 
@@ -155,15 +156,15 @@ export function Layout() {
               {g.items.map(entry)}
             </div>
           ))}
-          {MOCK_API && !collapsed && <div className="mt-4 rounded-md border border-line bg-surface-muted px-3 py-2 text-xs text-ink-muted">{API_URL ? n.liveApi : AUTH_BYPASS ? 'Demo workspace · sample data' : 'Sample data workspace'}</div>}
+          {!LIVE_MODE && !collapsed && <div className="mt-4 rounded-md border border-line bg-surface-muted px-3 py-2 text-xs text-ink-muted">{AUTH_BYPASS ? n.demoWorkspace : n.sampleWorkspace}</div>}
         </nav>
 
         <div className="border-t border-line p-2">
           {isAdmin && entry({ to: '/settings', label: n.settings, icon: SettingsIcon })}
           {collapsed && <button type="button" onClick={toggle} aria-label={n.expand} title={n.expand} className="tap mt-1 grid h-9 w-full place-items-center rounded-md text-ink-muted hover:bg-surface-hover hover:text-ink"><PanelLeftOpen className="h-4 w-4" strokeWidth={1.75} /></button>}
           <div className={clsx('mt-1 flex items-center gap-2 rounded-md py-1.5', collapsed ? 'justify-center' : 'px-2')}>
-            <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-paprika-100 text-[11px] font-bold text-paprika-700" title={collapsed ? (me?.full_name ?? 'JM Masala') : undefined}>{initials}</div>
-            {!collapsed && <div className="min-w-0 flex-1 leading-tight"><p className="truncate text-sm font-bold text-ink">{me?.full_name ?? 'JM Masala'}</p><p className="text-xs text-ink-muted">{role}</p></div>}
+            <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-paprika-100 text-[11px] font-bold text-paprika-700" title={collapsed ? (me?.full_name ?? n.fallbackName) : undefined}>{initials}</div>
+            {!collapsed && <div className="min-w-0 flex-1 leading-tight"><p className="truncate text-sm font-bold text-ink">{me?.full_name ?? n.fallbackName}</p><p className="text-xs text-ink-muted">{role}</p></div>}
             {!collapsed && !AUTH_BYPASS && <button onClick={() => void signOut()} aria-label={n.signOut} className="tap grid place-items-center rounded-md text-ink-muted hover:bg-surface-hover hover:text-ink"><LogOut className="h-4 w-4" /></button>}
           </div>
         </div>
@@ -205,7 +206,7 @@ export function Layout() {
           <div className="flex items-center gap-2">
             <img src="/logo.png" alt="" className="h-9 w-9 shrink-0 object-contain" />
             <span className="font-display text-sm font-bold leading-tight">{t.common.companyName}</span>
-            {MOCK_API && <span className="rounded-full border border-line bg-surface-muted px-2 py-0.5 text-[10px] font-bold text-ink-muted">Sample data</span>}
+            {!LIVE_MODE && <span className="rounded-full border border-line bg-surface-muted px-2 py-0.5 text-[10px] font-bold text-ink-muted">{n.sampleBadge}</span>}
           </div>
           <div className="flex items-center">
             <button type="button" onClick={() => setPaletteOpen(true)} aria-label={n.search} className="tap grid place-items-center rounded-md text-ink-muted hover:bg-surface-hover"><Search className="h-5 w-5" /></button>
@@ -213,7 +214,7 @@ export function Layout() {
           </div>
         </header>
 
-        <main className="has-tabbar mx-auto w-full max-w-[1440px] flex-1 px-4 py-4 md:px-6 md:py-6"><Outlet /></main>
+        <main className="has-tabbar mx-auto w-full max-w-[1440px] flex-1 px-4 py-4 md:px-6 md:py-6"><Suspense fallback={<Spinner />}><Outlet /></Suspense></main>
 
         {/* Phone bottom bar: Home, Pipeline, round "+", Quotations, More */}
         <nav aria-label={n.mainNav} className="safe-bottom fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 items-end border-t border-line bg-surface md:hidden">
