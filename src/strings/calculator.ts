@@ -15,7 +15,7 @@ export const calculator = {
   fxFromDollarRate: (rate: string) => `The dollar rate is today's rate (${rate}) from the dashboard.`,
   fxFromOldDollarRate: (rate: string) => `The dollar rate (${rate}) was set on an earlier day: check it.`,
   fxFromSheet: (rate: string) => `Nobody has set today's dollar rate, so the sheet's rate (${rate}) is used.`,
-  noteSheet: 'Starting figures are the sheet dated 10.3.26. Insurance and ECGC are worked out on each column\'s own spot rate, so some columns differ slightly from the Excel sheet. To get the Excel sheet\'s own figure for a column, type its export expenses total in the override row.',
+  noteSheet: 'Starting figures are the sheet dated 10.3.26. Insurance and ECGC are fixed amounts per export point, as in the Excel sheet, so every column matches it. To replace a column\'s export expenses with your own figure, type it in the override row.',
   quality: 'Quality',
   exportPoint: 'Export point',
   qualityPlaceholder: 'e.g. Cumin',
@@ -47,15 +47,14 @@ export const calculator = {
     freight: 'Sea freight: rupees per dollar', tons: 'Tons in a container',
     pct: {
       overseas_commission_pct: 'Overseas commission (%)', drawback_pct: 'Duty drawback (%)', rodtep_pct: 'RODTEP (%)', margin_pct: 'Margin (%)',
-      insurance_pct: 'Transit insurance (% of spot)', ecgc_pct: 'ECGC premium (% of spot)',
     } satisfies Record<PercentKey, string>,
   },
   heads: {
     title: 'Export expenses per export point',
-    hint: 'Rupees per ton, except the sea freight in dollars per container. Insurance and ECGC follow the spot rate and are not listed here.',
+    hint: 'Rupees per ton, except the sea freight in dollars per container.',
     rows: {
-      rail_road: 'Rail-cum-road freight', sea_freight_usd: 'Sea freight in USD per container', thc: 'THC / lorry detention', cfs: 'CFS and other expenses + fumigation', c_and_f: 'C&F agent charges',
-      lc_bank: 'L/C expenses / bank charges', weighment_spot: 'Spot weighment', weighment_landing: 'Weighment landing', service_tax: 'Service tax', misc: 'Miscellaneous',
+      rail_road: 'Rail-cum-road freight', sea_freight_usd: 'Sea freight in USD per container', thc: 'THC / lorry detention', cfs: 'CFS and other expenses + fumigation', c_and_f: 'C&F agent charges', insurance: 'Transit insurance (0.065% of spot, fixed)',
+      lc_bank: 'L/C expenses / bank charges', weighment_spot: 'Spot weighment', weighment_landing: 'Weighment landing', ecgc: 'ECGC premium (0.4% of spot, fixed)', service_tax: 'Service tax', misc: 'Miscellaneous',
     } satisfies Record<HeadKey, string>,
   },
   points: { BNP: 'BNP', CTG: 'CTG', DUB: 'DUB', HILI: 'Hili' } satisfies Record<ExportPoint, string>,

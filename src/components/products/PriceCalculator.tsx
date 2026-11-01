@@ -278,7 +278,7 @@ function Sheet({ d, seed, sheets, showArchived, onShowArchived, onOpen, onNewFro
               {breakdown && <>
                 <tr><th scope="colgroup" colSpan={columns.length + 1} className={clsx(LABEL, STICKY, 'bg-surface-muted font-bold text-ink')}>{s.rows.expenses}</th></tr>
                 {(['rail_road', 'sea_freight', 'thc', 'cfs', 'c_and_f', 'insurance', 'lc_bank', 'weighment_spot', 'weighment_landing', 'ecgc', 'service_tax', 'misc', 'total'] as const).map((k) =>
-                  calcRow(k === 'insurance' ? `${s.expenseRows.insurance} @ ${p('insurance_pct')}%` : k === 'ecgc' ? `${s.expenseRows.ecgc} @ ${p('ecgc_pct')}%` : s.expenseRows[k], 'inr', (o) => o.expenses[k], { strong: k === 'total', key: k }))}
+                  calcRow(s.expenseRows[k], 'inr', (o) => o.expenses[k], { strong: k === 'total', key: k }))}
                 {anyOverride && calcRow(s.rows.expensesUsed, 'inr', (o) => o.export_expenses, { strong: true, key: 'used', flag: (o) => o.expenses_override_used })}
               </>}
               <tr>

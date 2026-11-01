@@ -7,12 +7,12 @@ export const EXPORT_POINTS = ['BNP', 'CTG', 'DUB', 'HILI'] as const;
 export type ExportPoint = (typeof EXPORT_POINTS)[number];
 
 /** The expense heads of an export point, in the order of the sheet. Rupees per ton, except the sea freight (dollars per container). */
-export const HEAD_KEYS = ['rail_road', 'sea_freight_usd', 'thc', 'cfs', 'c_and_f', 'lc_bank', 'weighment_spot', 'weighment_landing', 'service_tax', 'misc'] as const;
+export const HEAD_KEYS = ['rail_road', 'sea_freight_usd', 'thc', 'cfs', 'c_and_f', 'insurance', 'lc_bank', 'weighment_spot', 'weighment_landing', 'ecgc', 'service_tax', 'misc'] as const;
 export type HeadKey = (typeof HEAD_KEYS)[number];
 export type ExpenseHeads = Record<HeadKey, string>;
 
 /** The percentages and rates every column shares (a percentage is written as 1 for 1%). */
-export const PERCENT_KEYS = ['overseas_commission_pct', 'drawback_pct', 'rodtep_pct', 'margin_pct', 'insurance_pct', 'ecgc_pct'] as const;
+export const PERCENT_KEYS = ['overseas_commission_pct', 'drawback_pct', 'rodtep_pct', 'margin_pct'] as const;
 export type PercentKey = (typeof PERCENT_KEYS)[number];
 export interface Assumptions extends Record<PercentKey, string> { freight_inr_per_usd: string; container_tons: string }
 
