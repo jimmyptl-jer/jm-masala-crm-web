@@ -6,6 +6,7 @@ import clsx from 'clsx';
 import { Package } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { money } from '@/lib/format';
+import { productPhoto } from '@/lib/productPhotos';
 import type { Product } from '@/lib/types';
 import { t } from '@/strings';
 
@@ -20,14 +21,14 @@ export function group(rows: Product[]): Group[] {
   for (const p of rows) map.set(p.name, [...(map.get(p.name) ?? []), p]);
   return [...map.entries()].map(([name, list]) => ({
     name, rows: list,
-    image: list.find((p) => p.image_url)?.image_url ?? null,
+    image: list.find((p) => p.image_url)?.image_url ?? productPhoto(name),
     packing: [...new Set(list.flatMap((p) => p.packing_options))],
     updated: list.map((p) => p.updated_at).filter(Boolean).sort().at(-1) ?? '',
     archived: list.every((p) => p.archived),
   }));
 }
 
-/** Product photo (the signed packaging image link) or a placeholder icon. */
+/** Product photo (the signed packaging image link, else the catalogue photo from lib/productPhotos.ts) or a placeholder icon. */
 export function Thumb({ src, name, className }: { src: string | null; name: string; className?: string }) {
   return src
     ? <img src={src} alt={s.imageAlt(name)} loading="lazy" className={clsx('object-cover', className)} />
