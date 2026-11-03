@@ -11,7 +11,7 @@ import clsx from 'clsx';
 import { Pencil } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '@/auth/AuthProvider';
-import { Button, EmptyState, ErrorNote, Input, Select, Sheet, Spinner, useToast } from '@/components/ui';
+import { Button, EmptyState, ErrorNote, Input, Select, Sheet, Spinner, errorMessage, useToast } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import type { Role, UserRow } from '@/lib/types';
 import { t } from '@/strings';
@@ -108,6 +108,7 @@ export function UsersPanel() {
   const approve = useMutation({
     mutationFn: (id: string) => api.patch<UserRow>(`/users/${id}`, { active: true }),
     onSuccess: async () => { await qc.invalidateQueries({ queryKey: ['users'] }); toast(s.approved); },
+    onError: (e) => toast(errorMessage(e) || t.common.saveFailed, 'error'),
   });
 
   return (

@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Archive, ChevronLeft, FilePlus2, Pencil, RotateCcw } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { InquiryStatusPill } from '@/components/inquiries/InquiryStatusPill';
-import { Button, ErrorNote, PageHeader, Spinner, StatusBadge, useToast } from '@/components/ui';
+import { Button, ErrorNote, PageHeader, Spinner, StatusBadge, errorMessage, useToast } from '@/components/ui';
 import { api } from '@/lib/api';
 import { date, money } from '@/lib/format';
 import type { InquiryDetail as InquiryDetailData } from '@/lib/types';
@@ -26,6 +26,7 @@ export default function InquiryDetail() {
   const archive = useMutation({
     mutationFn: (archived: boolean) => api.patch(`/inquiries/${id}`, { archived }),
     onSuccess: async (_r, archived) => { await qc.invalidateQueries({ queryKey: ['inquiries'] }); await qc.invalidateQueries({ queryKey: ['inquiry', id] }); toast(archived ? s.form.archived : s.form.restored); },
+    onError: (e) => toast(errorMessage(e) || t.common.saveFailed, 'error'),
   });
   if (query.isPending) return <Spinner />;
   if (query.isError) return <ErrorNote error={query.error} onRetry={() => void query.refetch()} />;

@@ -19,9 +19,10 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowUpToLine, ImagePlus, Plus, Trash2 } from 'lucide-react';
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Button, ErrorNote, Input, Select, Spinner, Textarea, useToast } from '@/components/ui';
+import { Button, ErrorNote, Input, Select, Spinner, Textarea, errorMessage, useToast } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import { hasRoute, PROBE_ID } from '@/lib/config';
+import { revealFirstError } from '@/lib/formFeedback';
 import { useProducts } from '@/lib/hooks';
 import type { Product } from '@/lib/types';
 import { APPROVED_PRODUCT_NAMES, isApprovedProduct } from '@/lib/products';
@@ -201,6 +202,7 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
   const submit = async (ev: FormEvent) => {
     ev.preventDefault();
     if (busy) return;
+    const form = ev.currentTarget as HTMLFormElement;
     const v: Record<string, string> = {};
     if (!name.trim()) v.name = s.nameRequired;
     else if (!isApprovedProduct(name)) v.name = s.approvedOnly;
@@ -215,7 +217,7 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
       }
     }
     setErrors(v);
-    if (Object.keys(v).length) return;
+    if (Object.keys(v).length) { toast(t.common.fixFields, 'error'); revealFirstError(ev.currentTarget as HTMLFormElement); return; }
     setBusy(true);
     setFatal(null);
     let current: GradeRow | undefined;
@@ -237,7 +239,8 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
       if (e instanceof ApiError && e.fields && current) {
         const row = current.key;
         setErrors(Object.fromEntries(Object.entries(e.fields).map(([k, m]) => [k === 'name' || k.startsWith('packing_options') ? k : `${row}.${k}`, m])));
-      } else setFatal(e);
+        toast(t.common.fixFields, 'error'); revealFirstError(form);
+      } else { setFatal(e); toast(errorMessage(e) || t.common.saveFailed, 'error'); }
       await qc.invalidateQueries({ queryKey: ['products'] });
     } finally {
       setBusy(false);

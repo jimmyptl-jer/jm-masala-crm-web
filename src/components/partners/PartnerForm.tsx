@@ -7,8 +7,9 @@
 import { useQueryClient } from '@tanstack/react-query';
 import clsx from 'clsx';
 import { useState } from 'react';
-import { Button, ErrorNote, Input, Select, Textarea, useToast } from '@/components/ui';
+import { Button, ErrorNote, Input, Select, Textarea, errorMessage, useToast } from '@/components/ui';
 import { ApiError, api } from '@/lib/api';
+import { revealFirstError } from '@/lib/formFeedback';
 import { PARTNER_ROLES, PARTNER_STATUSES, type Partner, type PartnerInput, type PartnerRole, type PartnerStatus } from '@/lib/partners';
 import { t } from '@/strings';
 
@@ -50,9 +51,10 @@ export function PartnerForm({ initial, onSaved, onCancel }: { initial?: Partner;
   async function submit(ev: React.FormEvent) {
     ev.preventDefault();
     if (busy) return;
+    const form = ev.currentTarget as HTMLFormElement;
     const local = validate();
     setErrors(local);
-    if (Object.keys(local).length) return;
+    if (Object.keys(local).length) { toast(t.common.fixFields, 'error'); revealFirstError(form); return; }
     setBusy(true);
     setFatal(null);
     const body = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]));
@@ -63,8 +65,8 @@ export function PartnerForm({ initial, onSaved, onCancel }: { initial?: Partner;
       toast(initial ? s.f.updated : s.f.added);
       onSaved(saved);
     } catch (e) {
-      if (e instanceof ApiError && e.fields && Object.keys(e.fields).length) setErrors(e.fields);
-      else setFatal(e);
+      if (e instanceof ApiError && e.fields && Object.keys(e.fields).length) { setErrors(e.fields); toast(t.common.fixFields, 'error'); revealFirstError(form); }
+      else { setFatal(e); toast(errorMessage(e) || t.common.saveFailed, 'error'); }
     } finally { setBusy(false); }
   }
 

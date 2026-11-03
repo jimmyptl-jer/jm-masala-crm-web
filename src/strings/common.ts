@@ -6,6 +6,10 @@ export const common = {
   loading: 'Loading…',
   save: 'Save',
   saving: 'Saving…',
+  /** Toast shown when Save is pressed with a field that needs fixing (the page also scrolls to the first one). */
+  fixFields: 'Please fix the highlighted fields.',
+  /** Toast fallback when a save failed and the server gave no readable reason. */
+  saveFailed: 'Could not save. Please try again.',
   cancel: 'Cancel',
   close: 'Close',
   edit: 'Edit',

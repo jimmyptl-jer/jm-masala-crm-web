@@ -23,6 +23,7 @@ import { DailyRates } from '@/components/products/DailyRates';
 import { ColdPanel, IconAction, NewEnquiriesPanel, wantsOf } from '@/components/today/TodayPanels';
 import { Button, EmptyState, ErrorNote, Input, Select, Sheet, Spinner, Textarea, errorMessage, useToast } from '@/components/ui';
 import { api } from '@/lib/api';
+import { revealFirstError } from '@/lib/formFeedback';
 import { buildChase, goingCold, type ChaseKind, type ChaseRow, type ChaseTone } from '@/lib/chase';
 import { addDays, money, todayIST, waLink } from '@/lib/format';
 import { hasRoute, PROBE_ID } from '@/lib/config';
@@ -96,7 +97,8 @@ function ContactSheet({ mode, buyers, buyer, onClose, onSaved }: { mode: 'done' 
     if (!buyerId) e.buyer = c.buyerRequired;
     if (!body.trim()) e.body = c.outcomeRequired;
     setErrors(e);
-    if (Object.keys(e).length || busy) return;
+    if (busy) return;
+    if (Object.keys(e).length) { toast(t.common.fixFields, 'error'); revealFirstError(document.querySelector('[role="dialog"]')); return; }
     setBusy(true);
     setFatal(null);
     try {

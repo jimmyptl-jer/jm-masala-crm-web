@@ -10,8 +10,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { BuyerForm } from '@/components/BuyerForm';
-import { Button, ErrorNote, Input, Select, Sheet, Textarea, useToast } from '@/components/ui';
+import { Button, ErrorNote, Input, Select, Sheet, Textarea, errorMessage, useToast } from '@/components/ui';
 import { ApiError, api } from '@/lib/api';
+import { revealFirstError } from '@/lib/formFeedback';
 import { todayIST } from '@/lib/format';
 import { useBuyers, useTeam } from '@/lib/hooks';
 import { APPROVED_PRODUCT_NAMES } from '@/lib/products';
@@ -68,9 +69,10 @@ export function InquiryForm({ initial, defaultBuyerId, onSaved, onCancel }: { in
 
   const submit = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    const form = ev.currentTarget as HTMLFormElement;
     const v = validate();
     setErrors(v);
-    if (Object.keys(v).length) return;
+    if (Object.keys(v).length) { toast(t.common.fixFields, 'error'); revealFirstError(form); return; }
     setBusy(true);
     setFatal(null);
     try {
@@ -84,8 +86,8 @@ export function InquiryForm({ initial, defaultBuyerId, onSaved, onCancel }: { in
       toast(s.saved);
       onSaved(saved);
     } catch (e) {
-      if (e instanceof ApiError && e.fields) setErrors(e.fields);
-      else setFatal(e);
+      if (e instanceof ApiError && e.fields) { setErrors(e.fields); toast(t.common.fixFields, 'error'); revealFirstError(form); }
+      else { setFatal(e); toast(errorMessage(e) || t.common.saveFailed, 'error'); }
     } finally { setBusy(false); }
   };
 

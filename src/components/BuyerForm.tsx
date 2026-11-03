@@ -13,11 +13,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { BuyerCrmFields } from '@/components/buyers/BuyerCrmFields';
 import { ApiError, api } from '@/lib/api';
+import { revealFirstError } from '@/lib/formFeedback';
 import { GSTIN_RE, INDIAN_STATES } from '@/lib/india';
 import { isApprovedProduct } from '@/lib/products';
 import type { Buyer, BuyerInput, Currency, Incoterm, QuoteType } from '@/lib/types';
 import { t } from '@/strings';
-import { Button, ErrorNote, Input, Segmented, Select, Textarea, useToast } from './ui';
+import { Button, ErrorNote, Input, Segmented, Select, Textarea, errorMessage, useToast } from './ui';
 
 // Shorthand for this form's strings.
 const s = t.buyerForm;
@@ -118,9 +119,10 @@ export function BuyerForm({ initial, onSaved, onCancel, defaultType = 'export' }
    */
   const submit = async (ev: React.FormEvent) => {
     ev.preventDefault();
+    const form = ev.currentTarget as HTMLFormElement;
     const v = validate();
     setErrors(v);
-    if (Object.keys(v).length) return;
+    if (Object.keys(v).length) { toast(t.common.fixFields, 'error'); revealFirstError(form); return; }
     setBusy(true);
     setFatal(null);
     try {
@@ -136,8 +138,8 @@ export function BuyerForm({ initial, onSaved, onCancel, defaultType = 'export' }
       toast(initial ? 'Buyer updated' : 'Buyer added');
       onSaved(saved);
     } catch (e) {
-      if (e instanceof ApiError && e.fields) setErrors(e.fields);
-      else setFatal(e);
+      if (e instanceof ApiError && e.fields) { setErrors(e.fields); toast(t.common.fixFields, 'error'); revealFirstError(form); }
+      else { setFatal(e); toast(errorMessage(e) || t.common.saveFailed, 'error'); }
     } finally { setBusy(false); }
   };
 

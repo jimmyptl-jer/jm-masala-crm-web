@@ -13,7 +13,7 @@ import { api } from '@/lib/api';
 import { useBuyers } from '@/lib/hooks';
 import type { QuoteDetail } from '@/lib/types';
 import { SearchSelect } from '@/components/SearchSelect';
-import { Button, ErrorNote, Segmented, Sheet, useToast } from '@/components/ui';
+import { Button, ErrorNote, Segmented, Sheet, errorMessage, useToast } from '@/components/ui';
 import { t } from '@/strings';
 import { useInvalidateQuote } from './shared';
 
@@ -70,6 +70,7 @@ function DuplicateForm({ onClose, quote }: { onClose: () => void; quote: QuoteDe
       onClose();
       nav(`/quotes/${r.id}/edit`);
     },
+    onError: (e) => toast(errorMessage(e) || t.common.saveFailed, 'error'),
   });
 
   /**
