@@ -35,6 +35,10 @@ Original target (kept for reference): desktop sidebar in this order:
 
 Settings sits at the bottom for administrators. On mobile, keep Dashboard, Pipeline, Quotes and Buyers in the bottom navigation, with a prominent New quote action; put the remaining destinations in a compact More menu. Preserve the current responsive sidebar and bottom navigation pattern.
 
+**Phone shell (built):** the bottom bar is Home, Pipeline, a round "+" (Create sheet), Quotes, Buyers and More. More opens a sheet (backdrop, Escape and tap-outside close it) with every other page as a large two-column tile, grouped Sales / Operations, with the follow-ups badge; Settings for administrators. The top bar shows the page title (for example "Buyers" or "Quotations . Details"), a Back button instead of the logo inside a section, search and sign-out; on Home it shows the logo and company name. **Phone list pages (Buyers, Inquiries, Quotations, Partners):** summary tiles in a compact two-by-two grid, the filters folded behind a Filters button (it shows how many are active), and one card per row instead of the wide table (tables stay from md up). Every text field is 16 px on phones so iPhone Safari does not zoom in when one is tapped.
+
+**Nothing slides sideways on a phone (rule for every screen):** a table never scrolls inside its box under 768 px. Give a wide table the class `rt` and it becomes a stack of cards on phones, each value labelled with its column heading (CSS in `web/src/index.css`, labels added by `web/src/lib/responsiveTables.ts`); the first cell is the card title and a single cell spanning all columns is shown as a plain group heading. Tab strips wrap onto a second line instead of scrolling. The phone end-to-end test (`web/e2e/12-responsive.spec.ts`) fails if any screen has an area wider than its box.
+
 ## Screens
 
 ### 1. Dashboard — `/`
