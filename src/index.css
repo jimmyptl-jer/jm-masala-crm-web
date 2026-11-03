@@ -106,6 +106,14 @@
 /* From md width up the tab bar is hidden, so only normal padding is needed. */
 @media (min-width: 768px) { .has-tabbar { padding-bottom: 2rem; } }
 
+/*
+ * iPhone Safari zooms the whole page when a text field under 16px gets focus. The 16px rule in the base layer loses to Tailwind utilities
+ * such as text-sm, so on phones every text field is forced to 16px here (checkboxes, radios and sliders are not text fields).
+ */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']), select, textarea { font-size: 16px !important; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }

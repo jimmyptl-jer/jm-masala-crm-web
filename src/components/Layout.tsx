@@ -7,15 +7,16 @@
  *    number of drafts, Follow-ups with the number due as a red badge), Operations (Products, Orders); Settings (admin
  *    only) and the signed-in person at the bottom; a Search button (Ctrl/Cmd + K opens CommandPalette).
  *  - Top bar (md and up): breadcrumb, the bell (dot when follow-ups are due) and a "+ New" menu (New quotation, Add buyer).
- *  - Phone: header with the logo and sign-out, and a bottom bar: Home, Pipeline, a round paprika "+" (opens a Create sheet),
- *    Quotations, More (the full menu).
+ *  - Phone: header with the page title (a Back button instead of the logo inside a section), search and sign-out, and a bottom bar:
+ *    Home, Pipeline, a round paprika "+" (opens a Create sheet), Quotes, Buyers, More. More opens a sheet with every other page as a
+ *    large tile, grouped (Sales, Operations) and with the follow-ups badge; Settings for administrators.
  * API: GET /buyers/summary (follow-ups due, key ['buyers','summary']) and GET /quotes?status=draft&limit=1 (draft count, key
  * ['quotes','nav-drafts']) for the badges. Proforma invoices, shipments and payments from the design are not in
  * the app yet, so they are not in the menu. Sign out is hidden in AUTH_BYPASS mode (lib/config.ts); Settings is admin-only (FR-04).
  */
 import clsx from 'clsx';
 import { useQuery } from '@tanstack/react-query';
-import { Banknote, Bell, Columns3, FileSpreadsheet, FileText, FlaskConical, Handshake, IndianRupee, Inbox, LayoutDashboard, LogOut, MoreHorizontal, Package, PackageCheck, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings as SettingsIcon, Ship, Users, Workflow } from 'lucide-react';
+import { Banknote, Bell, ChevronLeft, Columns3, FileSpreadsheet, FileText, FlaskConical, Handshake, IndianRupee, Inbox, LayoutDashboard, LogOut, MoreHorizontal, Package, PackageCheck, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings as SettingsIcon, Ship, Users, Workflow } from 'lucide-react';
 import { Suspense, useEffect, useMemo, useState, type ElementType, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
@@ -202,13 +203,18 @@ export function Layout() {
         </div>
 
         {/* Phone header (hidden from md up) */}
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-surface px-4 text-ink md:hidden">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="" className="h-9 w-9 shrink-0 object-contain" />
-            <span className="font-display text-sm font-bold leading-tight">{t.common.companyName}</span>
-            {!LIVE_MODE && <span className="rounded-full border border-line bg-surface-muted px-2 py-0.5 text-[10px] font-bold text-ink-muted">{n.sampleBadge}</span>}
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-line bg-surface pl-2 pr-3 text-ink md:hidden">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            {/* inside a section (a detail, a form) the logo gives way to a Back button; the title says which page this is */}
+            {segs.length > 1
+              ? <button type="button" onClick={() => navigate(-1)} aria-label={n.back} className="tap grid shrink-0 place-items-center rounded-md text-ink-secondary hover:bg-surface-hover"><ChevronLeft className="h-6 w-6" strokeWidth={1.75} /></button>
+              : <img src="/logo.png" alt="" className="ml-2 h-9 w-9 shrink-0 object-contain" />}
+            {segs.length === 0
+              ? <span className="truncate font-display text-sm font-bold leading-tight">{t.common.companyName}</span>
+              : <span className="truncate text-[17px] font-bold leading-tight text-ink">{crumbs.join(' · ')}</span>}
+            {!LIVE_MODE && segs.length === 0 && <span className="shrink-0 rounded-full border border-line bg-surface-muted px-2 py-0.5 text-[10px] font-bold text-ink-muted">{n.sampleBadge}</span>}
           </div>
-          <div className="flex items-center">
+          <div className="flex shrink-0 items-center">
             <button type="button" onClick={() => setPaletteOpen(true)} aria-label={n.search} className="tap grid place-items-center rounded-md text-ink-muted hover:bg-surface-hover"><Search className="h-5 w-5" /></button>
             {!AUTH_BYPASS && <button onClick={() => void signOut()} aria-label={n.signOut} className="tap grid place-items-center rounded-md text-ink-muted hover:bg-surface-hover"><LogOut className="h-5 w-5" /></button>}
           </div>
@@ -216,27 +222,47 @@ export function Layout() {
 
         <main className="has-tabbar mx-auto w-full max-w-[1440px] flex-1 px-4 py-4 md:px-6 md:py-6"><Suspense fallback={<Spinner />}><Outlet /></Suspense></main>
 
-        {/* Phone bottom bar: Home, Pipeline, round "+", Quotations, More */}
-        <nav aria-label={n.mainNav} className="safe-bottom fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 items-end border-t border-line bg-surface md:hidden">
-          {moreOpen && (
-            <div className="glass-panel-strong absolute bottom-[calc(100%+0.75rem)] right-3 min-w-52 p-2 shadow-pop">
-              {[...live, ...(isAdmin ? [{ to: '/settings', label: n.settings, icon: SettingsIcon } as Item] : [])].map((i) => (
-                <NavLink key={i.to} to={i.to} end={i.end} onClick={() => setMoreOpen(false)}
-                  className={({ isActive }) => clsx('tap flex items-center gap-3 rounded-md px-3 py-2 text-sm', isActive ? 'bg-paprika-50 font-bold text-paprika-700' : 'text-ink-secondary hover:bg-surface-hover')}>
-                  <i.icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />{i.label}
-                </NavLink>
-              ))}
-            </div>
-          )}
+        {/* Phone bottom bar: Home, Pipeline, round "+", Quotes, Buyers, More (the rest of the pages open in a sheet) */}
+        <nav aria-label={n.mainNav} className="safe-bottom fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 items-end border-t border-line bg-surface md:hidden">
           <Tab to="/" end icon={<LayoutDashboard className="h-5 w-5" strokeWidth={1.75} />} label={n.home} />
           <Tab to="/pipeline" icon={<Columns3 className="h-5 w-5" strokeWidth={1.75} />} label={n.pipeline.replace('Buyer ', '')} />
           <div className="grid place-items-center pb-2">
             <button type="button" onClick={() => setCreateOpen(true)} aria-label={n.create} className="-mt-5 grid h-12 w-12 place-items-center rounded-full bg-paprika text-white shadow-pop hover:bg-paprika-700"><Plus className="h-6 w-6" /></button>
           </div>
-          <Tab to="/quotes" icon={<FileText className="h-5 w-5" strokeWidth={1.75} />} label={n.quotes} />
-          <button type="button" aria-expanded={moreOpen} aria-label={n.moreNav} onClick={() => setMoreOpen((o) => !o)} className={clsx('tap flex flex-col items-center justify-center gap-0.5 py-2 text-xs font-bold', moreOpen ? 'text-paprika' : 'text-ink-muted')}><MoreHorizontal className="h-5 w-5" strokeWidth={1.75} />{n.more}</button>
+          <Tab to="/quotes" icon={<FileText className="h-5 w-5" strokeWidth={1.75} />} label={n.navQuotes} />
+          <Tab to="/buyers" icon={<Users className="h-5 w-5" strokeWidth={1.75} />} label={n.buyers} />
+          <button type="button" aria-expanded={moreOpen} aria-haspopup="dialog" aria-label={n.moreNav} onClick={() => setMoreOpen((o) => !o)} className={clsx('tap flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-bold', moreOpen ? 'text-paprika' : 'text-ink-muted')}><MoreHorizontal className="h-5 w-5" strokeWidth={1.75} />{n.more}</button>
         </nav>
       </div>
+
+      {/* Phone "More": every other page as a large tile, grouped, in a sheet that closes on tap-outside, Escape or choosing a page */}
+      <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title={n.moreTitle}>
+        <div className="space-y-5">
+          {groups.map((g, gi) => {
+            const items = g.items.filter((i) => !i.soon && !['/', '/pipeline', '/quotes', '/buyers'].includes(i.to));
+            return items.length === 0 ? null : (
+              <div key={gi}>
+                <p className="px-1 pb-2 text-[11px] font-bold uppercase tracking-[0.05em] text-ink-muted">{g.label ?? n.groupMain}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {items.map((i) => (
+                    <NavLink key={i.to} to={i.to} end={i.end} onClick={() => setMoreOpen(false)}
+                      className={({ isActive }) => clsx('relative flex min-h-14 items-center gap-3 rounded-lg border px-3 text-sm font-bold', isActive ? 'border-paprika-200 bg-paprika-50 text-paprika-700' : 'border-line bg-surface text-ink hover:bg-surface-hover')}>
+                      <i.icon className="h-5 w-5 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
+                      <span className="min-w-0 flex-1 leading-tight">{i.label}</span>
+                      {i.count != null && <span className={clsx('rounded-full px-1.5 text-[11px] font-bold', i.alert ? 'bg-danger-bg text-danger-ink' : 'bg-surface-muted text-ink-secondary')}>{i.count}</span>}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          {isAdmin && (
+            <NavLink to="/settings" onClick={() => setMoreOpen(false)} className={({ isActive }) => clsx('flex min-h-14 items-center gap-3 rounded-lg border px-3 text-sm font-bold', isActive ? 'border-paprika-200 bg-paprika-50 text-paprika-700' : 'border-line bg-surface text-ink hover:bg-surface-hover')}>
+              <SettingsIcon className="h-5 w-5 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />{n.settings}
+            </NavLink>
+          )}
+        </div>
+      </Sheet>
 
       <Sheet open={createOpen} onClose={() => setCreateOpen(false)} title={n.create}>
         <div className="space-y-2">

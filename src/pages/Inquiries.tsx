@@ -43,6 +43,8 @@ export default function Inquiries() {
   const [owner, setOwner] = useState('');
   const [dueOnly, setDueOnly] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false); // phones only: the four filters stay folded away until asked for
+  const activeFilters = [status, buyer, product, owner].filter(Boolean).length;
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'date', desc: true });
   const [page, setPage] = useState(0);
   const delayed = useDebounced(search.trim(), 250);
@@ -86,7 +88,7 @@ export default function Inquiries() {
         <input className="h-11 w-full rounded-xl border border-line-strong bg-surface pl-10 pr-3 text-sm text-crm-ink shadow-sm placeholder:text-slate-500 focus:border-blue-300 focus:bg-white" value={search} onChange={(e) => { setSearch(e.target.value); reset(); }} placeholder={s.search} type="search" /></label>
     </div>
 
-    <section aria-label="Inquiry metrics" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <section aria-label="Inquiry metrics" className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
       <Metric label={s.metricOpen} value={query.isPending ? '—' : open} detail={s.metricOpenSub} onOpen={() => show({ status: '', open: true })} />
       <Metric label={s.metricNew} value={query.isPending ? '—' : all.filter((i) => i.status === 'new').length} detail={s.metricNewSub} onOpen={() => show({ status: 'new' })} />
       <Metric label={s.metricQuoted} value={query.isPending ? '—' : all.filter((i) => i.status === 'quoted').length} detail={s.metricQuotedSub} onOpen={() => show({ status: 'quoted' })} />
@@ -96,12 +98,13 @@ export default function Inquiries() {
     <section className="glass-panel overflow-hidden" aria-labelledby="inquiries-heading">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-4 sm:px-5">
         <div><h2 id="inquiries-heading" className="text-lg font-bold tracking-tight text-crm-ink">{s.directory}</h2><p className="text-sm text-slate-500">{query.isPending ? s.loading : s.match(filtered.length)}</p></div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={() => setFiltersOpen((v) => !v)} aria-expanded={filtersOpen} aria-controls="inquiries-filters" className={clsx('tap inline-flex items-center gap-2 rounded-xl border px-3 text-sm font-semibold md:hidden', activeFilters ? 'border-paprika-200 bg-paprika-50 text-paprika-700' : 'border-line-strong bg-surface text-slate-600')}><Filter className="h-4 w-4" />{filtersOpen ? s.hideFilters : activeFilters ? s.filtersCount(activeFilters) : s.filtersButton}</button>
           <button type="button" onClick={() => { setDueOnly((v) => !v); reset(); }} aria-pressed={dueOnly} className={clsx('tap inline-flex items-center gap-2 rounded-xl border px-3 text-sm font-semibold', dueOnly ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-line-strong bg-surface text-slate-600 hover:bg-white')}><Filter className="h-4 w-4" />{s.dueOnly}</button>
           <button type="button" onClick={() => { setShowArchived((v) => !v); reset(); }} aria-pressed={showArchived} className={clsx('tap inline-flex items-center gap-2 rounded-xl border px-3 text-sm font-semibold', showArchived ? 'border-line-strong bg-surface-muted text-ink' : 'border-line-strong bg-surface text-slate-600 hover:bg-white')}>{s.archivedToggle}</button>
         </div>
       </div>
-      <div className="grid gap-3 border-b border-slate-200/70 bg-surface p-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div id="inquiries-filters" className={clsx('gap-3 border-b border-slate-200/70 bg-surface p-4 sm:grid-cols-2 md:grid xl:grid-cols-4', filtersOpen ? 'grid' : 'hidden')}>
         <Select label={s.filters.status} value={status} onChange={(e) => { setStatus(e.target.value); setOpenOnly(false); reset(); }}><option value="">{s.filters.allStatuses}</option>{STATUSES.map((x) => <option key={x} value={x}>{s.status[x]}</option>)}</Select>
         <Select label={s.filters.buyer} value={buyer} onChange={(e) => { setBuyer(e.target.value); reset(); }}><option value="">{s.filters.allBuyers}</option>{(buyersQuery.data ?? []).map((b) => <option key={b.id} value={b.id}>{b.company_name}</option>)}</Select>
         <Select label={s.filters.product} value={product} onChange={(e) => { setProduct(e.target.value); reset(); }}><option value="">{s.filters.allProducts}</option>{APPROVED_PRODUCT_NAMES.map((n) => <option key={n}>{n}</option>)}</Select>
@@ -110,7 +113,22 @@ export default function Inquiries() {
 
       {query.isPending ? <Spinner label={s.loading} /> : query.isError ? <div className="p-5"><ErrorNote error={query.error} onRetry={() => void query.refetch()} /></div> : visible.length === 0 ? <div className="px-4 py-12"><EmptyState title={filtering ? s.noneMatch : s.none}>
         {filtering ? <button type="button" onClick={() => { setSearch(''); setStatus(''); setBuyer(''); setProduct(''); setOwner(''); setDueOnly(false); setOpenOnly(false); }} className="mt-2 font-semibold text-crm-blue underline">{s.clear}</button> : <Link to="/inquiries/new" className="mt-2 font-semibold text-crm-blue underline">{s.addFirst}</Link>}</EmptyState></div> : <>
-        <div className="overflow-x-auto"><table className="w-full min-w-[1400px] border-separate border-spacing-0 text-left text-sm">
+        {/* phone: one card per inquiry (the 13-column table is for md and up) */}
+        <ul className="divide-y divide-line md:hidden">{visible.map((i) => {
+          const first = firstLine(i);
+          const more = i.products.length - 1;
+          const overdue = !!i.next_followup && i.next_followup <= todayIST() && OPEN.includes(i.status);
+          return <li key={i.id} className={clsx('flex items-start gap-3 px-4 py-3', i.archived && 'opacity-60')}>
+            <button type="button" onClick={() => navigate(`/inquiries/${i.id}`)} className="min-w-0 flex-1 text-left">
+              <div className="flex flex-wrap items-center gap-2"><span className="font-mono text-[11px] font-semibold text-slate-500">{i.inquiry_code}</span><InquiryStatusPill status={i.status} /></div>
+              <div className="mt-0.5 break-words font-bold text-crm-ink">{i.buyer_name}</div>
+              <div className="mt-0.5 text-sm text-slate-700">{first ? `${first.product_name}${first.quantity ? ` · ${first.quantity} ${first.unit}` : ''}` : '—'}{more > 0 ? ` ${s.moreProducts(more)}` : ''}</div>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500"><span>{date(i.inquiry_date)}</span>{destination(i) && <span>{destination(i)}</span>}{i.next_followup && <span className={overdue ? 'font-bold text-danger-ink' : ''}>{date(i.next_followup)}</span>}</div>
+            </button>
+            <Link to={`/quotes/new?buyer=${i.buyer_id}&inquiry=${i.id}`} aria-label={`${s.actions.quote} ${i.inquiry_code}`} className="tap grid shrink-0 place-items-center rounded-lg border border-line text-crm-blue hover:bg-surface-hover"><FilePlus2 className="h-4 w-4" /></Link>
+          </li>;
+        })}</ul>
+        <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[1400px] border-separate border-spacing-0 text-left text-sm">
           <thead className="bg-slate-50/95"><tr className="border-b border-slate-200">
             <th className="px-4 py-3">{sortButton('code', s.cols.code)}</th><th className="px-3 py-3">{sortButton('date', s.cols.date)}</th><th className="px-3 py-3">{sortButton('buyer', s.cols.buyer)}</th><th className="px-3 py-3">{sortButton('product', s.cols.product)}</th>
             <th className="px-3 py-3">{s.cols.grade}</th><th className="px-3 py-3 text-right">{s.cols.quantity}</th><th className="px-3 py-3">{sortButton('destination', s.cols.destination)}</th><th className="px-3 py-3">{s.cols.terms}</th>

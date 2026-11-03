@@ -229,7 +229,7 @@ export default function Today() {
             <div role="tablist" aria-label={c.tabsLabel} className="flex gap-1 overflow-x-auto border-b border-line px-3">
               {([['chase', c.tabChase, left], ['overdue', c.tabOverdue, overdue], ['new', c.tabNew, newBuyers.length], ['cold', c.tabCold, cold.length], ['rates', c.tabRates, null]] as const).map(([key, label, count]) => (
                 <button key={key} type="button" role="tab" id={`tab-${key}`} aria-selected={tab === key} aria-controls="today-panel" onClick={() => setTab(key)}
-                  className={clsx('tap -mb-px whitespace-nowrap border-b-2 px-4 text-sm font-bold', tab === key ? 'border-paprika text-paprika' : 'border-transparent text-ink-muted hover:text-ink')}>{label}{count !== null ? ` ${count}` : ''}</button>
+                  className={clsx('tap -mb-px shrink-0 whitespace-nowrap border-b-2 px-3 text-sm font-bold md:px-4', tab === key ? 'border-paprika text-paprika' : 'border-transparent text-ink-muted hover:text-ink')}>{label}{count !== null ? ` ${count}` : ''}</button>
               ))}
             </div>
             <div role="tabpanel" id="today-panel" aria-labelledby={`tab-${tab}`}>

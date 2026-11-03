@@ -35,8 +35,12 @@ test.describe('on a phone (390 px wide)', () => {
     const header = page.locator('header').first();
     await expect(header.getByRole('img').first()).toBeVisible();
     await expect(header).toContainText('JM Masala Trading LLP');
+    // Buyers and Quotes are in the bottom bar; every other page is a tile in the More sheet
+    for (const area of ['Buyers', 'Quotes']) await expect(page.getByRole('link', { name: area }).first()).toBeVisible();
     await page.getByRole('button', { name: /More/ }).click();
-    for (const area of ['Buyers', 'Quotations', 'Products']) await expect(page.getByRole('link', { name: area }).first()).toBeVisible();
+    const sheet = page.getByRole('dialog', { name: 'All pages' });
+    await expect(sheet).toBeVisible();
+    for (const area of ['Inquiries', 'Follow-ups', 'Products', 'Daily rates', 'Partners', 'Orders']) await expect(sheet.getByRole('link', { name: area }).first()).toBeVisible();
   });
 
   test('buttons and links are big enough to tap (at least 40 px) on the dashboard', async ({ page }) => {

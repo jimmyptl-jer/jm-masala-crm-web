@@ -17,6 +17,7 @@ export const buyersPage = {
   directory: 'Buyer directory', loadingRecords: 'Loading buyer records',
   matchCount: (n: number) => `${n} buyer${n === 1 ? '' : 's'} match your view`,
   dueFollowups: 'Due follow-ups', statusActive: 'Active', statusAll: 'All statuses', statusArchived: 'Archived',
+  filtersButton: 'Filters', filtersCount: (n: number) => `Filters (${n})`, hideFilters: 'Hide filters', lastContact: 'Last contact', nextStep: 'Next', quotesShort: (n: number) => `${n} quote${n === 1 ? '' : 's'}`, selectBuyer: 'Select',
   fStage: 'Stage', fAllStages: 'All stages', fProduct: 'Product interest', fAllProducts: 'All products', fOwner: 'Owner', fAllOwners: 'All owners',
   fStatus: 'Status', fMarket: 'Market', fAllTypes: 'All types', fCountry: 'Country',
   typeExport: 'Export', typeDomestic: 'Domestic',

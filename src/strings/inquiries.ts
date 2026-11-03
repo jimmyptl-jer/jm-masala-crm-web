@@ -23,6 +23,7 @@ export const inquiries = {
   metricNew: 'New', metricNewSub: 'Not yet looked at',
   metricQuoted: 'Quoted', metricQuotedSub: 'A quotation has been made',
   metricDue: 'Follow-ups due', metricDueSub: 'Today or earlier',
+  filtersButton: 'Filters', filtersCount: (n: number) => `Filters (${n})`, hideFilters: 'Hide filters',
   filters: { status: 'Status', allStatuses: 'All statuses', buyer: 'Buyer', allBuyers: 'All buyers', product: 'Product', allProducts: 'All products', owner: 'Assigned to', allOwners: 'All people' },
   cols: {
     code: 'Inquiry ID', date: 'Date', buyer: 'Buyer', product: 'Product', grade: 'Grade / purity', quantity: 'Quantity', destination: 'Destination', terms: 'Trade terms',

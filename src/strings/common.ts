@@ -65,6 +65,7 @@ export const nav = {
   newMenu: '+ New', newQuotation: 'New quotation', addBuyer: 'Add buyer', newInquiry: 'New inquiry',
   draftCount: (n: number) => `${n} draft quotations`,
   more: 'More', moreNav: 'More navigation', create: 'Create', close: 'Close',
+  back: 'Back', moreTitle: 'All pages', groupMain: 'Main', navQuotes: 'Quotes',
   pageNew: 'New', pageEdit: 'Edit', pageDetails: 'Details',
   paletteTitle: 'Search', palettePlaceholder: 'Search pages, buyers, quotations…',
   palettePages: 'Pages', paletteBuyers: 'Buyers', palettePartners: 'Partners', paletteQuotes: 'Quotations', paletteNone: 'Nothing found',
