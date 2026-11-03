@@ -2,9 +2,9 @@
 import { expect, test } from '@playwright/test';
 import { api, collectProblems } from './helpers';
 
-const CATALOGUE = ['Cumin Seeds', 'Coriander Seeds', 'Fennel Seeds', 'Fenugreek Seeds', 'Mustard Seeds', 'Sesame Seeds', 'Ajwain Seeds', 'Psyllium Husk (Isabgol)', 'Turmeric', 'Turmeric Powder', 'Red Chili Powder', 'Dry Ginger Slices', 'Dry Ginger Powder'];
+const CATALOGUE = ['Cumin Seeds', 'Coriander Seeds', 'Fennel Seeds', 'Fenugreek Seeds', 'Mustard Seeds', 'Sesame Seeds', 'Ajwain Seeds', 'Psyllium Husk (Isabgol)', 'Turmeric', 'Turmeric Powder', 'Red Chili Powder', 'Dry Ginger Slices', 'Dry Ginger Powder', 'Nigella Seeds', 'Red Chili Whole', 'Cumin Powder', 'Coriander Powder', 'Fenugreek Powder', 'Dehydrated Red Onion', 'Dehydrated White Onion', 'Garlic Flakes'];
 
-test('the Products page shows all 13 catalogue products and marks the drafts', async ({ page }) => {
+test('the Products page shows all 21 catalogue products and marks the drafts', async ({ page }) => {
   const problems = collectProblems(page);
   await page.goto('/products');
   for (const name of CATALOGUE) await expect(page.getByText(name, { exact: true }).first(), name).toBeVisible();

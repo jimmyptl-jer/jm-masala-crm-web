@@ -222,7 +222,7 @@ export interface Product {
   gst_rate: string | null;
   /** Short code of the product shared by all its grades, e.g. 'SPC-CUM'; null when none was set. */
   product_code?: string | null;
-  /** Whole Spices, Ground Spices, Oilseeds, Dried Spices or Seeds & Plant Products (set by the API from the name). */
+  /** Whole Spices, Ground Spices, Oilseeds, Dried Spices, Seeds & Plant Products or Dehydrated Products (set by the API from the name). */
   category?: string;
   /** 'draft' until the record has been checked; only active products are offered on quotations. Missing = active. */
   status?: 'draft' | 'active';

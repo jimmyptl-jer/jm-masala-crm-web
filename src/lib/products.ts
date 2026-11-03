@@ -17,6 +17,14 @@ export const APPROVED_PRODUCT_NAMES = [
   'Red Chili Powder',
   'Dry Ginger Slices',
   'Dry Ginger Powder',
+  'Nigella Seeds',
+  'Red Chili Whole',
+  'Cumin Powder',
+  'Coriander Powder',
+  'Fenugreek Powder',
+  'Dehydrated Red Onion',
+  'Dehydrated White Onion',
+  'Garlic Flakes',
 ] as const;
 
 export type ProductName = (typeof APPROVED_PRODUCT_NAMES)[number];
@@ -36,6 +44,14 @@ export const PRODUCT_CATEGORY: Record<ProductName, string> = {
   'Red Chili Powder': 'Ground Spices',
   'Dry Ginger Slices': 'Dried Spices',
   'Dry Ginger Powder': 'Ground Spices',
+  'Nigella Seeds': 'Whole Spices',
+  'Red Chili Whole': 'Whole Spices',
+  'Cumin Powder': 'Ground Spices',
+  'Coriander Powder': 'Ground Spices',
+  'Fenugreek Powder': 'Ground Spices',
+  'Dehydrated Red Onion': 'Dehydrated Products',
+  'Dehydrated White Onion': 'Dehydrated Products',
+  'Garlic Flakes': 'Dehydrated Products',
 };
 
 /**
