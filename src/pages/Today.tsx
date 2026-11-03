@@ -25,6 +25,7 @@ import { Button, EmptyState, ErrorNote, Input, Select, Sheet, Spinner, Textarea,
 import { api } from '@/lib/api';
 import { revealFirstError } from '@/lib/formFeedback';
 import { buildChase, goingCold, type ChaseKind, type ChaseRow, type ChaseTone } from '@/lib/chase';
+import { isColdProspect } from '@/lib/crm';
 import { addDays, money, todayIST, waLink } from '@/lib/format';
 import { hasRoute, PROBE_ID } from '@/lib/config';
 import { useBuyers, useProducts } from '@/lib/hooks';
@@ -165,7 +166,8 @@ export default function Today() {
   const quotesQ = useQuery({ queryKey: ['quotes', 'dashboard'], queryFn: () => api.get<QuoteList>('/quotes?limit=100') });
   const products = useProducts({ archived: 'false' });
 
-  const mine = useMemo(() => (buyersQ.data ?? []).filter((b) => scope === 'team' || !b.assigned_to || b.assigned_to === me?.id), [buyersQ.data, scope, me?.id]);
+  // research prospects that nobody has worked yet stay out of the dashboard lists (they are in Buyers); see isColdProspect
+  const mine = useMemo(() => (buyersQ.data ?? []).filter((b) => !isColdProspect(b) && (scope === 'team' || !b.assigned_to || b.assigned_to === me?.id)), [buyersQ.data, scope, me?.id]);
   const mineIds = useMemo(() => new Set(mine.map((b) => b.id)), [mine]);
   const quotes = quotesQ.data?.data ?? [];
   const chase = useMemo(() => buildChase(mine, quotes.filter((q) => mineIds.has(q.buyer_id)), (dash.data?.due ?? []).filter((d) => mineIds.has(d.buyer_id)), today), [mine, mineIds, quotes, dash.data, today]);
@@ -228,7 +230,7 @@ export default function Today() {
 
           {/* the tabs: the cards above open the first four, "Daily rates" is the fifth */}
           <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-card" aria-label={c.tabsLabel}>
-            <div role="tablist" aria-label={c.tabsLabel} className="flex gap-1 overflow-x-auto border-b border-line px-3">
+            <div role="tablist" aria-label={c.tabsLabel} className="flex flex-wrap gap-x-1 border-b border-line px-3 md:flex-nowrap md:overflow-x-auto">
               {([['chase', c.tabChase, left], ['overdue', c.tabOverdue, overdue], ['new', c.tabNew, newBuyers.length], ['cold', c.tabCold, cold.length], ['rates', c.tabRates, null]] as const).map(([key, label, count]) => (
                 <button key={key} type="button" role="tab" id={`tab-${key}`} aria-selected={tab === key} aria-controls="today-panel" onClick={() => setTab(key)}
                   className={clsx('tap -mb-px shrink-0 whitespace-nowrap border-b-2 px-3 text-sm font-bold md:px-4', tab === key ? 'border-paprika text-paprika' : 'border-transparent text-ink-muted hover:text-ink')}>{label}{count !== null ? ` ${count}` : ''}</button>
@@ -368,7 +370,7 @@ function ChaseTable({ rows, onDone, onQuote }: { rows: ChaseRow[]; onDone?: (b: 
   if (rows.length === 0) return <div className="border-t border-line px-5 py-8"><EmptyState title={c.chaseEmpty}>{c.chaseEmptyHint}</EmptyState></div>;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[820px] text-left text-[13.5px]">
+      <table className="rt w-full min-w-[820px] text-left text-[13.5px]">
         <thead className="border-y border-line bg-surface-muted">
           <tr className="h-9 text-[11px] font-bold uppercase tracking-[0.05em] text-ink-muted">
             <th className="px-5">{c.colBuyer}</th><th className="px-3">{c.colWants}</th><th className="px-3">{c.colLast}</th><th className="px-3">{c.colWhy}</th><th className="px-5 text-right">{c.colAction}</th>

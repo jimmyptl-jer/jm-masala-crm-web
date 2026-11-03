@@ -12,6 +12,7 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { AuthProvider } from '@/auth/AuthProvider';
 import { ToastProvider } from '@/components/ui';
+import { startResponsiveTables } from '@/lib/responsiveTables';
 import { router } from './router';
 import './index.css';
 
@@ -39,3 +40,6 @@ createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </StrictMode>,
 );
+
+// tables with the class `rt` become cards on phones; their cells are labelled with the column heading (lib/responsiveTables.ts, index.css)
+startResponsiveTables();

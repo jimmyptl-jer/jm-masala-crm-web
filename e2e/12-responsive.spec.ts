@@ -12,8 +12,13 @@ const TABLET = { width: 820, height: 1180 };
 /** True when the page itself scrolls sideways (a table that scrolls inside its own box is fine). */
 const pageScrollsSideways = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
 
+/** Boxes inside the page that you would have to slide sideways (a table or a tab strip wider than its box). On a phone there must be none. */
+const slidingAreas = (page: Page) => page.evaluate(() => [...document.querySelectorAll('main *')]
+  .filter((e) => { const o = getComputedStyle(e).overflowX; return (o === 'auto' || o === 'scroll') && e.scrollWidth > e.clientWidth + 2 && e.clientWidth > 0 && (e as HTMLElement).offsetParent !== null; })
+  .map((e) => `${e.tagName.toLowerCase()} ${e.scrollWidth}>${e.clientWidth} ${String(e.className).slice(0, 40)}`));
+
 const SCREENS: [string, string][] = [
-  ['Dashboard', '/'], ['Buyers', '/buyers'], ['Inquiries', '/inquiries'], ['Quotations', '/quotes'], ['New quotation', '/quotes/new'], ['Products', '/products'], ['Follow-ups', '/follow-ups'], ['Orders', '/orders'],
+  ['Dashboard', '/'], ['Buyers', '/buyers'], ['Inquiries', '/inquiries'], ['Quotations', '/quotes'], ['New quotation', '/quotes/new'], ['Products', '/products'], ['Daily rates', '/daily-rates'], ['Follow-ups', '/follow-ups'], ['Orders', '/orders'], ['Pipeline', '/pipeline'], ['Partners', '/partners'],
 ];
 
 test.describe('on a phone (390 px wide)', () => {
@@ -26,6 +31,7 @@ test.describe('on a phone (390 px wide)', () => {
       await expect(page.locator('main, [role="main"], body').first()).toBeVisible();
       await page.waitForLoadState('networkidle');
       expect(await pageScrollsSideways(page), `${name} scrolls sideways`).toBe(false);
+      expect(await slidingAreas(page), `${name} has an area you must slide sideways`).toEqual([]);
       expect(problems).toEqual([]);
     });
   }

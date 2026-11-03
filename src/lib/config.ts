@@ -42,6 +42,7 @@ const LIVE_ROUTES: [string, RegExp][] = [
   ['*', /^\/products(\/[0-9a-f]{24})?(\?|$)/],
   ['GET', /^\/products\/[0-9a-f]{24}\/rate-history$/],
   ['PUT', /^\/daily-rates$/],
+  ['GET', /^\/price-list$/],
   // settings, today's dollar rate and what the server can send itself
   ['GET', /^\/settings$/],
   ['PUT', /^\/settings$/],

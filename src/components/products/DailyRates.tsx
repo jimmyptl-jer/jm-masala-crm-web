@@ -13,9 +13,11 @@ import { History, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthProvider';
+import { PriceListSheet } from '@/components/products/PriceListSheet';
 import { group } from '@/components/products/shared';
 import { Button, EmptyState, ErrorNote, Sheet, Spinner, useToast } from '@/components/ui';
 import { api } from '@/lib/api';
+import { hasRoute, LIVE_MODE } from '@/lib/config';
 import { date, money } from '@/lib/format';
 import { useDebounced, useProducts, useRateHistory } from '@/lib/hooks';
 import { isApprovedProduct } from '@/lib/products';
@@ -60,6 +62,7 @@ export function DailyRates({ embedded }: { embedded?: boolean } = {}) {
   const toast = useToast();
   const query = useProducts({ archived: 'false' });
   const [search, setSearch] = useState('');
+  const [listOpen, setListOpen] = useState(false);
   const [edits, setEdits] = useState<Record<string, Draft>>({});
   const [busy, setBusy] = useState(false);
   const [fatal, setFatal] = useState<unknown>(null);
@@ -93,14 +96,18 @@ export function DailyRates({ embedded }: { embedded?: boolean } = {}) {
     <section className={clsx('min-w-0', !embedded && 'card')} aria-labelledby="daily-rates-heading">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-4 py-4 sm:px-5">
         <div><h2 id="daily-rates-heading" className="text-lg font-bold tracking-tight text-ink">{s.dailyTitle}</h2><p className="max-w-2xl text-sm text-ink-muted">{s.dailySub}</p>{!isAdmin && <p className="mt-1 text-xs text-ink-muted">{s.dailyAdminOnly}</p>}</div>
+        <div className="flex flex-wrap gap-2">
+          {hasRoute('GET', '/price-list') && LIVE_MODE && <Button variant="secondary" onClick={() => setListOpen(true)}>{s.priceListButton}</Button>}
         {isAdmin && (
-          <div className="flex flex-wrap gap-2">
+          <>
             <Link to="/products/new" className="tap inline-flex items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-sm font-semibold text-ink-secondary hover:bg-surface-hover"><Plus className="h-4 w-4" aria-hidden />{s.dailyAddProduct}</Link>
             <Button variant="ghost" disabled={changed.length === 0 || busy} onClick={() => setEdits({})}>{s.dailyDiscard}</Button>
             <Button loading={busy} disabled={changed.length === 0} onClick={() => void save()}>{s.dailySave(changed.length)}</Button>
-          </div>
+          </>
         )}
+        </div>
       </div>
+      <PriceListSheet open={listOpen} onClose={() => setListOpen(false)} />
       <div className="border-b border-line p-4">
         <label className="relative block max-w-md"><span className="sr-only">{s.dailySearch}</span><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden />
           <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={s.dailySearch} className="h-11 w-full rounded-lg border border-line-strong bg-surface pl-10 pr-3 text-sm text-ink placeholder:text-ink-placeholder focus:border-paprika focus:outline-none focus:ring-2 focus:ring-paprika/20" /></label>
@@ -111,7 +118,7 @@ export function DailyRates({ embedded }: { embedded?: boolean } = {}) {
         <div className="px-4 py-12"><EmptyState title={needle ? s.dailyNoMatch : s.dailyNone} /></div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
+          <table className="rt w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
             <thead className="bg-surface-muted"><tr className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
               <th className="px-4 py-3">{s.dailyGrade}</th><th className="px-3 py-3 text-right">{s.dailyUsd}</th><th className="px-3 py-3 text-right">{s.dailyInr}</th><th className="px-3 py-3">{s.dailySet}</th><th className="px-3 py-3 text-right">{s.dailyActions}</th>
             </tr></thead>

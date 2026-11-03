@@ -44,7 +44,7 @@ export function NewEnquiriesPanel({ buyers, onQuote }: { buyers: Buyer[]; onQuot
   if (buyers.length === 0) return <div className="border-t border-line px-5 py-8"><EmptyState title={c.newEmpty}>{c.newEmptyHint}</EmptyState></div>;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[820px] text-left text-[13.5px]">
+      <table className="rt w-full min-w-[820px] text-left text-[13.5px]">
         <thead className="border-y border-line bg-surface-muted">
           <tr className="h-9 text-[11px] font-bold uppercase tracking-[0.05em] text-ink-muted"><th className="px-5">{c.colBuyer}</th><th className={TH}>{c.colWants}</th><th className={TH}>{c.colEnquiry}</th><th className={TH}>{c.colReplied}</th><th className="px-5 text-right">{c.colAction}</th></tr>
         </thead>
@@ -72,7 +72,7 @@ export function ColdPanel({ rows }: { rows: { buyer: Buyer; days: number }[] }) 
   if (rows.length === 0) return <div className="border-t border-line px-5 py-8"><EmptyState title={c.coldEmpty}>{c.coldEmptyHint}</EmptyState></div>;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] text-left text-[13.5px]">
+      <table className="rt w-full min-w-[720px] text-left text-[13.5px]">
         <thead className="border-y border-line bg-surface-muted">
           <tr className="h-9 text-[11px] font-bold uppercase tracking-[0.05em] text-ink-muted"><th className="px-5">{c.colBuyer}</th><th className={TH}>{c.colWants}</th><th className={TH}>{c.colSilent}</th><th className="px-5 text-right">{c.colAction}</th></tr>
         </thead>

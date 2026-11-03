@@ -17,7 +17,7 @@ import { t } from '@/strings';
  */
 export function RevisionTabs({ revisions, selected, onSelect }: { revisions: Revision[]; selected: number; onSelect: (rev: number) => void }) {
   return (
-    <div role="tablist" aria-label={t.quoteDetail.revisionsLabel} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+    <div role="tablist" aria-label={t.quoteDetail.revisionsLabel} className="flex flex-wrap gap-2 pb-1 md:-mx-4 md:flex-nowrap md:overflow-x-auto md:px-4">
       {revisions.map((r) => {
         const on = r.revision === selected;
         return (

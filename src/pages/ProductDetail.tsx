@@ -63,7 +63,7 @@ export default function ProductDetail() {
 
   const gradesTable = (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[860px] text-left text-sm">
+      <table className="rt w-full min-w-[860px] text-left text-sm">
         <thead>
           <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
             <th className="px-2 py-2 font-medium">#</th><th className="px-2 py-2 font-medium">{s.colGrade}</th><th className="px-2 py-2 font-medium">{s.colPurity}</th>
@@ -161,7 +161,7 @@ export default function ProductDetail() {
         </div>
       </section>
 
-      <div role="tablist" aria-label={g.name} className="glass-panel flex gap-1 overflow-x-auto p-2">
+      <div role="tablist" aria-label={g.name} className="glass-panel flex flex-wrap gap-1 p-2 md:flex-nowrap md:overflow-x-auto">
         {TABS.map((x) => (
           <button key={x.key} type="button" role="tab" aria-selected={tab === x.key} onClick={() => setTab(x.key)}
             className={clsx('tap whitespace-nowrap rounded-xl px-4 text-sm font-semibold', tab === x.key ? 'bg-forest-900 text-white' : 'text-slate-600 hover:bg-brand-50')}>{x.label}</button>

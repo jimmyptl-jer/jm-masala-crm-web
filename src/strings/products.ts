@@ -156,4 +156,13 @@ export const products = {
   dailySave: (n: number) => (n === 0 ? 'Save rates' : `Save ${n} rate${n === 1 ? '' : 's'}`), dailyDiscard: 'Discard changes', dailySaved: (n: number) => `${n} rate${n === 1 ? '' : 's'} saved`,
   dailyUnchanged: 'No rate was changed.', dailyAddGrade: 'Add grade', dailyAddProduct: 'Add product', dailyAdminOnly: 'Only an administrator can change rates.',
   dailyRateAria: (what: string, grade: string) => `${what} for ${grade}`, dailyDraft: 'Draft',
+  // the price list built from the daily rates (PriceListSheet)
+  priceListButton: 'Price list',
+  priceList: {
+    title: 'Price list for buyers', subject: 'Indicative prices', copyText: 'Copy text', copyHtml: 'Copy for email', email: 'Email', whatsapp: 'WhatsApp', copied: 'Copied', copyFailed: 'Could not copy. Select the text and copy it by hand.',
+    empty: 'No grade has a rupee rate yet. Set the rates in Daily rates first.',
+    noFx: 'No dollar rate is set, so USD per MT comes from the saved dollar rate per kg. Set today\'s dollar rate on the dashboard.',
+    staleFx: 'The dollar rate is not from today, so the USD per MT figures may be out of date. Update it on the dashboard.',
+    draftNote: 'Grades still marked Draft are included because their rate is set.',
+  },
 };

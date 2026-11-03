@@ -22,7 +22,7 @@ export default function Orders() {
       {query.data && query.data.total > query.data.data.length && <p role="status" className="mb-4 rounded-lg border border-line bg-surface-muted px-4 py-3 text-sm text-ink-muted">{t.common.listTruncated(query.data.data.length, query.data.total)}</p>}
       {query.isPending ? <Spinner /> : query.isError ? <ErrorNote error={query.error} onRetry={() => void query.refetch()} /> : query.data?.data.length ? (
         <div className="glass-panel overflow-hidden bg-surface">
-          <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm">
+          <div className="overflow-x-auto"><table className="rt w-full min-w-[720px] text-left text-sm">
             <thead className="bg-surface text-xs uppercase tracking-wide text-slate-500"><tr>
               <th className="px-4 py-3 font-medium">{o.colQuote}</th><th className="px-4 py-3 font-medium">{o.colBuyer}</th><th className="px-4 py-3 font-medium">{o.colProducts}</th><th className="px-4 py-3 font-medium">{o.colValue}</th><th className="px-4 py-3 font-medium">{o.colOutcome}</th><th className="px-4 py-3" />
             </tr></thead>

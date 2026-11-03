@@ -22,6 +22,15 @@ export const BUSINESS_TYPES: BusinessType[] = ['importer', 'distributor', 'whole
  * The buckets the business wants to keep apart (an inquiry is not automatically a buyer): prospect (unverified),
  * qualified (a genuine requirement), opportunity (an active deal) and customer (won); plus lost.
  */
+/**
+ * A cold prospect: a company found by research (lead source "Web research ...") that has not asked for anything and has not been worked yet,
+ * that is, still a new lead or only mailed, with no follow-up date. There can be hundreds, so the dashboard keeps them out of "New enquiries",
+ * the chase list and "Going cold"; they stay in the Buyers list. The moment one replies (its stage moves on) or someone sets a follow-up date,
+ * it is an ordinary buyer and shows up everywhere.
+ */
+export const isColdProspect = (b: { lead_source: string | null; stage: Stage; next_followup: string | null }): boolean =>
+  /^web research/i.test(b.lead_source ?? '') && (b.stage === 'new_lead' || b.stage === 'contacted') && !b.next_followup;
+
 export type StageGroup = 'prospect' | 'qualified' | 'opportunity' | 'customer' | 'lost';
 
 /**

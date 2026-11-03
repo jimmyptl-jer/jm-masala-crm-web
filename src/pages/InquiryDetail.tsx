@@ -55,7 +55,7 @@ export default function InquiryDetail() {
 
       <section className="glass-panel overflow-hidden" aria-label={d.products}>
         <h2 className="border-b border-line px-4 py-3 text-sm font-semibold text-ink md:px-5">{d.products}</h2>
-        <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm">
+        <div className="overflow-x-auto"><table className="rt w-full min-w-[720px] text-left text-sm">
           <thead className="bg-surface text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-2 font-medium">{s.form.product}</th><th className="px-3 py-2 font-medium">{s.form.grade}</th><th className="px-3 py-2 font-medium">{s.form.purity}</th><th className="px-3 py-2 text-right font-medium">{s.form.quantity}</th><th className="px-3 py-2 font-medium">{s.form.packaging}</th><th className="px-3 py-2 font-medium">{s.form.specifications}</th></tr></thead>
           <tbody className="divide-y divide-line">{i.products.map((l, n) => <tr key={n}>
             <td className="px-4 py-2.5 font-semibold text-ink">{l.product_name}</td><td className="px-3 py-2.5 text-slate-600">{l.grade || '—'}</td><td className="px-3 py-2.5 text-slate-600">{l.purity || '—'}</td>

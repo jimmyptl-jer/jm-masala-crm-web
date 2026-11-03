@@ -71,7 +71,7 @@ export function BuyerDrawer({ id, onClose, onEdit }: { id: string; onClose: () =
         <button type="button" onClick={onClose} aria-label={bp.close} className="tap -mr-2 grid place-items-center rounded-xl text-slate-600 hover:bg-brand-50"><X className="h-5 w-5" /></button>
       </div>
       {buyer && <div className="flex items-center justify-between border-b border-slate-200/70 px-5 py-3 sm:px-7">
-        <div className="flex min-w-0 gap-2 overflow-x-auto" role="tablist" aria-label={bp.sectionsLabel}>{tabs.map((item) => <button key={item} type="button" role="tab" aria-selected={tab === item} onClick={() => setTab(item)} className={clsx('tap whitespace-nowrap rounded-lg px-3 text-sm font-semibold', tab === item ? 'bg-crm-blue text-white' : 'text-slate-600 hover:bg-brand-50')}>{bp.tabs[item]}</button>)}</div>
+        <div className="flex min-w-0 flex-wrap gap-2 md:flex-nowrap md:overflow-x-auto" role="tablist" aria-label={bp.sectionsLabel}>{tabs.map((item) => <button key={item} type="button" role="tab" aria-selected={tab === item} onClick={() => setTab(item)} className={clsx('tap whitespace-nowrap rounded-lg px-3 text-sm font-semibold', tab === item ? 'bg-crm-blue text-white' : 'text-slate-600 hover:bg-brand-50')}>{bp.tabs[item]}</button>)}</div>
         <button type="button" onClick={() => onEdit(buyer)} className="tap ml-2 rounded-lg border border-line-strong bg-surface px-3 text-sm font-semibold text-crm-ink hover:bg-white">{bp.edit}</button>
       </div>}
       <div className="flex-1 overflow-y-auto p-5 sm:p-7">

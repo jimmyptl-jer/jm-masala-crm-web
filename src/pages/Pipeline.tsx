@@ -220,7 +220,7 @@ export default function Pipeline() {
         )
       ) : (
         <section className="glass-panel overflow-x-auto" aria-label={p.listLabel}>
-          <table className="w-full min-w-[820px] text-left text-[13.5px]">
+          <table className="rt w-full min-w-[820px] text-left text-[13.5px]">
             <thead className="bg-surface-muted"><tr className="text-[11px] font-bold text-fg-muted">
               <th className="px-4 py-2.5">{head('buyer', p.colBuyer)}</th><th className="px-4 py-2.5">{head('country', p.colCountry)}</th><th className="px-4 py-2.5">{head('stage', p.colStage)}</th>
               <th className="px-4 py-2.5">{head('next', p.colNext)}</th><th className="px-4 py-2.5">{head('owner', p.colOwner)}</th><th className="px-4 py-2.5">{head('activity', p.colActivity)}</th>

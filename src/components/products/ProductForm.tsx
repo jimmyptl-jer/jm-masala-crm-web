@@ -298,7 +298,7 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
       <div className="md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:gap-5">
         {/* step list: shortcuts that scroll to each section (not a wizard; everything saves together) */}
         <nav aria-label={s.stepsLabel} className="mb-4 md:sticky md:top-0 md:mb-0 md:self-start">
-          <ol className="flex gap-2 overflow-x-auto md:flex-col md:gap-1">
+          <ol className="flex flex-wrap gap-2 md:flex-col md:flex-nowrap md:gap-1 md:overflow-x-auto">
             {FORM_STEPS.map((st, i) => (
               <li key={st.id} className="shrink-0">
                 <button type="button" onClick={() => document.getElementById(st.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
@@ -356,7 +356,7 @@ function Editor({ existing, editing, qc, toast, onSaved, onCancel }: {
           >
             {errors.grades && <p role="alert" className="text-sm text-red-700">{errors.grades}</p>}
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1040px] border-separate border-spacing-y-1 text-left text-sm">
+              <table className="rt w-full min-w-[1040px] border-separate border-spacing-y-1 text-left text-sm">
                 <thead>
                   <tr className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     <th className="w-8 px-1 py-1">#</th><th className="px-1 py-1">{s.grade}</th><th className="px-1 py-1">{s.cleaning}</th>
